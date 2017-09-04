@@ -3,6 +3,7 @@ from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import ParseError, NotAuthenticated
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -32,7 +33,7 @@ class RegisterView(APIView):
             account.save()
             return Response(status=status.HTTP_201_CREATED)
         else:
-            raise BadRequest(pp.errors)
+            raise ParseError(pp.errors)
 
 
 class LoginView(APIView):
@@ -57,9 +58,9 @@ class LoginView(APIView):
                 access_log.save()
                 return Response({'token': token.key})
             else:
-                raise Unauthorized()
+                raise NotAuthenticated()
         else:
-            raise BadRequest(pp.errors)
+            raise ParseError(pp.errors)
 
 
 class LogoutView(APIView):
@@ -87,9 +88,9 @@ class PasswordView(APIView):
                 change_password(account, password_new)
                 return Response(status=status.HTTP_202_ACCEPTED)
             else:
-                raise Unauthorized()
+                raise NotAuthenticated()
         else:
-            raise BadRequest(pp.errors)
+            raise ParseError(pp.errors)
 
 
 class DetailView(APIView):
@@ -109,7 +110,7 @@ class DetailView(APIView):
             Account.objects.filter(pk=request.user.pk).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
-            raise BadRequest(pp.errors)
+            raise ParseError(pp.errors)
 
 
 class AdminAccountView(APIView):
@@ -134,4 +135,4 @@ class AdminAccountView(APIView):
             Account.objects.filter(pk=uid).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
-            raise BadRequest(pp.errors)
+            raise ParseError(pp.errors)

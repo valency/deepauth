@@ -32,7 +32,7 @@ class RegisterViewSerializer(serializers.Serializer):
     def validate_username(self, value):
         try:
             Account.objects.get(username=value)
-            raise serializers.ValidationError(Conflict.default_detail)
+            raise serializers.ValidationError('Content is conflict.')
         except ObjectDoesNotExist:
             return value
 
