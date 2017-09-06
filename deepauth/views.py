@@ -3,7 +3,7 @@ from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import ParseError, NotAuthenticated
+from rest_framework.exceptions import ParseError
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
