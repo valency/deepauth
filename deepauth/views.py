@@ -14,6 +14,16 @@ from .utils.token import *
 
 
 class RegisterView(APIView):
+    """
+    post:
+        **注册用户**
+
+        - <span class='badge'>R</span> `username` 用户名，不能超过 150 个字符
+        - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+        - `email` 邮箱
+        - `last_name` 用户称呼（姓），不能超过 30 个字符
+        - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
+    """
     authentication_classes = ()
     permission_classes = (AllowAny,)
     serializer_class = RegisterViewSerializer
@@ -37,6 +47,13 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
+    """
+    get:
+        **登录**
+
+        - <span class='badge'>R</span> `username` 用户名，不能超过 150 个字符
+        - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+    """
     authentication_classes = ()
     permission_classes = (AllowAny,)
     serializer_class = LoginViewSerializer
@@ -64,6 +81,10 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    """
+    post:
+        <span class='badge'><i class='fa fa-lock'></i></span> **登出**
+    """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
     permission_classes = (IsAuthenticated,)
 
@@ -73,6 +94,14 @@ class LogoutView(APIView):
 
 
 class PasswordView(APIView):
+    """
+    put:
+        <span class='badge'><i class='fa fa-lock'></i></span> **修改密码**
+
+        - <span class='badge'>R</span> `password_old` 当前密码
+        - <span class='badge'>R</span> `password_new` 新密码
+        - <span class='badge'>R</span> `password_confirm` 重复新密码
+    """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
     permission_classes = (IsAuthenticated,)
     serializer_class = PasswordViewSerializer
@@ -94,6 +123,16 @@ class PasswordView(APIView):
 
 
 class DetailView(APIView):
+    """
+    get:
+        <span class='badge'><i class='fa fa-lock'></i></span> **获取用户信息**
+
+    put:
+        <span class='badge'><i class='fa fa-lock'></i></span> **修改用户信息**
+
+        - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）
+        - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
+    """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
     permission_classes = (IsAuthenticated,)
     serializer_class = DetailViewSerializer
@@ -114,6 +153,17 @@ class DetailView(APIView):
 
 
 class AdminAccountView(APIView):
+    """
+    get:
+        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **获取全部用户信息**
+
+    put:
+        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **修改用户信息**
+
+        - <span class='badge'>R</span> `id` 用户 ID
+        - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）
+        - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
+    """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
     permission_classes = (IsAdminUser,)
     serializer_class = AdminAccountViewSerializer
