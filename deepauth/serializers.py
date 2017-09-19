@@ -78,8 +78,13 @@ class DetailViewSerializer(ModifyViewSerializer):
         super().__init__(*args, **kwargs)
 
 
-class AdminAccountViewSerializer(DetailViewSerializer):
+class AdminAccountViewSerializer(ModifyViewSerializer):
     id = serializers.IntegerField()
+
+    def __init__(self, *args, **kwargs):
+        self.model = Account
+        self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'password', 'is_active')
+        super().__init__(*args, **kwargs)
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
