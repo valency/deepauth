@@ -13,7 +13,6 @@ setup(
         'django',
         'django-ipware',
         'djangorestframework',
-        'pycurl',
-        'deeputils'
+        'pycurl'
     ],
 )
