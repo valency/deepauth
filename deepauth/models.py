@@ -7,7 +7,14 @@ class Account(AbstractUser):
 
 
 class AccessLog(models.Model):
-    account = models.ForeignKey(Account)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
     t = models.DateTimeField(auto_now=True)
     ip = models.GenericIPAddressField(null=True, blank=True)
     token = models.CharField(max_length=40)
+
+
+class PasswordLog(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    t = models.DateTimeField(auto_now=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    password = models.CharField(max_length=32)

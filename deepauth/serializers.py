@@ -20,6 +20,12 @@ class AccessLogSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class PasswordLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PasswordLog
+        fields = '__all__'
+
+
 # View serializers
 
 class RegisterViewSerializer(serializers.Serializer):
