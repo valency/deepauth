@@ -1,9 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+INVITATION_LIMIT = 10
+
 
 class Account(AbstractUser):
     unique_auth = models.BooleanField(default=True)
+    verified_email = models.BooleanField(default=False)
 
 
 class AccessLog(models.Model):

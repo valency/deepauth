@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from deeputils.serializers import *
 
 from .models import *
@@ -31,7 +33,7 @@ class PasswordLogSerializer(serializers.ModelSerializer):
 class RegisterViewSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=30)
     last_name = serializers.CharField(max_length=30, required=False, default="")
-    username = serializers.CharField(max_length=150)
+    username = serializers.CharField(max_length=150, required=False)
     password = serializers.CharField()
     email = serializers.EmailField(required=False)
 
@@ -44,6 +46,10 @@ class RegisterViewSerializer(serializers.Serializer):
 
     def validate_password(self, value):
         return validate_password(value)
+
+    def validate(self, data):
+        # TODO: if ('email' in data and data['email'] is not None) or ('email' in data and data['email'] is not None):
+        print('u' + str(int(datetime.now().timestamp())))
 
 
 class LoginViewSerializer(serializers.Serializer):
