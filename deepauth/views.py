@@ -1,4 +1,8 @@
+import os
 from django.contrib.auth import authenticate
+import uuid
+import time
+from deepauth.utils.email_send import send_mail
 from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
@@ -12,6 +16,8 @@ from .serializers import *
 from .utils.password import *
 from .utils.token import *
 
+FILE_PATH = settings['STATICFILES_DIRS']
+FILE_URL = settings['STATIC_URL']
 
 class RegisterView(APIView):
     """
@@ -20,9 +26,11 @@ class RegisterView(APIView):
 
     - <span class='badge'>R</span> `username` 用户名，不能超过 150 个字符
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+    - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
     - `email` 邮箱
     - `last_name` 用户称呼（姓），不能超过 30 个字符
-    - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
+    - `invitation_code` 邀请码
+    - `phone_number` 手机号码
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -36,11 +44,36 @@ class RegisterView(APIView):
             username = pp.validated_data['username']
             password = pp.validated_data['password']
             email = pp.validated_data['email'] if 'email' in pp.validated_data else None
-            if Account.objects.count() <= 0:
-                account = Account.objects.create_superuser(first_name=first_name, last_name=last_name, username=username, password=password, email=email)
+            from django.conf import settings
+            if not settings.get('DEEPAUTH_EMAIL_VERIFICATION'):  # 不需要邮箱激活验证码
+                if Account.objects.count() <= 0:
+                    account = Account.objects.create_superuser(first_name=first_name, last_name=last_name,
+                                                               username=username, password=password,
+                                                               email=email, is_verified=True)
+                else:
+                    account = Account.objects.create_user(first_name=first_name, last_name=last_name,
+                                                          username=username, password=password,
+                                                          email=email, is_verified=True)
+                account.save()
             else:
-                account = Account.objects.create_user(first_name=first_name, last_name=last_name, username=username, password=password, email=email)
-            account.save()
+                verification_code = str(uuid.uuid4())
+                if Account.objects.count() <= 0:
+                    account = Account.objects.create_superuser(first_name=first_name, last_name=last_name,
+                                                               username=username, password=password, email=email)
+                else:
+                    account = Account.objects.create_user(first_name=first_name, last_name=last_name, username=username,
+                                                          password=password, email=email,
+                                                          verification_code=verification_code)
+                account.save()
+            if settings.get('DEEPAUTH_INVITATION_ONLY'):    # 需要邀请码
+                for i in range(INVITATION_LIMIT):           # 赠送10个邀请码
+                    code = str(uuid.uuid4())
+                    invitation_code = InvitationCode(code=code, account=account)
+                    invitation_code.save()
+                # 用户注册完后, 邀请码失效
+                obj = InvitationCode.objects.filter(code=pp.validated_data['invitation_code'])
+                obj.is_used = True
+                obj.save()
             return Response(status=status.HTTP_201_CREATED)
         else:
             raise ParseError(pp.errors)
@@ -65,6 +98,8 @@ class LoginView(APIView):
             password = pp.validated_data['password']
             account = authenticate(username=username, password=password)
             if account is not None:
+                if not account.is_verified:
+                    raise NotAuthenticated()
                 token, has_created = Token.objects.get_or_create(user=account)
                 if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
                     Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
@@ -191,5 +226,109 @@ class AdminAccountView(APIView):
                 return Response(status=status.HTTP_202_ACCEPTED)
             Account.objects.filter(pk=uid).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
+        else:
+            raise ParseError(pp.errors)
+
+
+class AvatarView(APIView):
+    authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
+    permission_classes = (IsAuthenticated,)
+    serializer_class = ImagePostViewSerializer
+
+    def post(self, request):
+        account = Account.objects.get(pk=request.user.pk)
+        pp = self.serializer_class(request.data)
+        if pp.is_valid():
+            avatar = pp.validated_data['avatar']
+            path = FILE_PATH + '/avatars/'
+            if not os.path.exists(path):
+                os.makedirs(path)
+            path += avatar.name
+            with open(path, 'wb+') as destination:
+                for chunk in avatar.chunks():
+                    destination.write(chunk)
+            url = FILE_URL + '/avatars/' + avatar.name
+            account.avatar_url = url
+            account.save()
+            return Response(url, status.HTTP_201_CREATED)
+        else:
+            raise ParseError(pp.errors)
+
+
+class ActivateView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    serializer_class = ActivateViewSerializer
+
+    def get(self, request):
+        pp = self.serializer_class(data=request.GET)
+        if pp.is_valid():
+            from django.conf import settings
+            if not settings.get('DEEPAUTH_EMAIL_VERIFICATION'):  # 不需要邮箱验证
+                raise NotAuthenticated
+            prefix_url = pp.validated_data['prefix']
+            user_id = pp.validated_data['id']
+            obj = Account.objects.get(pk=user_id)
+            if obj.verification_code is None:      # 已经激活的用户不再发激活码
+                raise NotAuthenticated
+            from django.conf import settings
+            deepauth_email_verification = settings.get('DEEPAUTH_EMAIL_VERIFICATION')
+            host_mail =  deepauth_email_verification['server']
+            email_user = deepauth_email_verification['username']
+            email_pwd = deepauth_email_verification['password']
+            email_recv = obj.email
+            subject = 'Please activate account'
+            content = prefix_url + '?' + 'code=' + obj.verification_code + '&' + 'id=' + str(user_id)
+            send_mail(email_user, email_pwd, [email_recv, ], subject, content, host_mail)
+            # from django.core.mail import send_mail
+            # send_mail('Subject here', 'Here is the message.', 'from@example.com', ['to@example.com'])
+            return Response(status=status.HTTP_200_OK)
+        else:
+            raise ParseError(pp.errors)
+
+
+class ValidateView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    serializer_class = ValidateViewSerializer
+
+    def get(self, request):
+        pp = self.serializer_class(data=request.GET)
+        if pp.is_valid():
+            from django.conf import settings
+            if not settings.get('DEEPAUTH_EMAIL_VERIFICATION'):  # 不需要邮箱验证
+                raise NotAuthenticated
+            user_id = pp.validated_data['id']
+            code = pp.validated_data['code']
+            obj = Account.objects.get(pk=user_id)
+            create_time = int(obj.verification_created.timestamp())
+            now_time = int(time.time())
+            delta = now_time - create_time
+            if code == obj.verfication_code and delta <= VALIDATION_TIME_LIMIT:
+                obj.is_verified = True
+                obj.verification_code = None
+                obj.save()
+                return Response(status=status.HTTP_200_OK)
+            else:
+                raise NotAuthenticated
+        else:
+            raise ParseError(pp.errors)
+
+class InvitationCodeView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    serializer_class = InvitationCodeViewSerializer
+
+    def get(self, request):
+        pp = self.serializer_class(data=request.GET)
+        if pp.is_valid():
+            user_id = pp.validated_data['user_id']
+            obj = Account.objects.get(pk=user_id)
+            from django.conf import settings
+            if settings.get('DEEPAUTH_INVITATION_ONLY') and obj.is_verified:
+                invitation_list = obj.invitationcode_set.query(is_used=False)
+                return Response(invitation_list)
+            else:
+                return Response(NotFound)
         else:
             raise ParseError(pp.errors)
