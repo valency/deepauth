@@ -1,4 +1,6 @@
 from deeputils.serializers import *
+from django.conf import settings
+from django.utils import timezone
 
 from .models import *
 from .utils.password import validate_password
@@ -25,15 +27,10 @@ class PasswordLogSerializer(serializers.ModelSerializer):
         model = PasswordLog
         fields = '__all__'
 
+
 class InvitationCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvitationCode
-        fields = '__all__'
-
-
-class AccountAvatarSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccountAvatar
         fields = '__all__'
 
 
@@ -41,14 +38,17 @@ class AccountAvatarSerializer(serializers.ModelSerializer):
 
 class RegisterViewSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=30)
-    last_name = serializers.CharField(max_length=30, required=False, default="")
-    username = serializers.CharField(max_length=150, required=False)
+    last_name = serializers.CharField(max_length=30, required=False, default=None)
+    username = serializers.CharField(max_length=150, required=False, default=None)
     password = serializers.CharField()
-    email = serializers.EmailField(required=False)
-    invitation_code = serializers.CharField(max_length=40, required=False)
-    phone_number = serializers.CharField(max_length=20, required=False)
+    email = serializers.EmailField(required=False, default=None)
+    tel = serializers.CharField(max_length=32, required=False, default=None)
+    country = serializers.CharField(max_length=8, required=False, default=None)
+    invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
 
     def validate_username(self, value):
+        if value is None:
+            value = 'u' + str(timezone.now().timestamp())
         try:
             Account.objects.get(username=value)
             raise serializers.ValidationError('Content is conflict.')
@@ -58,25 +58,28 @@ class RegisterViewSerializer(serializers.Serializer):
     def validate_password(self, value):
         return validate_password(value)
 
+    def validated_email(self, value):
+        if value is not None:
+            accounts = Account.objects.filter(email=value)
+            if accounts.count():
+                raise serializers.ValidationError('Content is conflict.')
+        return value
+
+    def validate_invitation_code(self, value):
+        if value is not None:
+            try:
+                InvitationCode.objects.get(id=value, user=None)
+            except ObjectDoesNotExist:
+                raise serializers.ValidationError(NotFound.default_detail)
+        return value
+
     def validate(self, data):
-        from django.conf import settings
-        if not settings.get('DEEPAUTH_INVITATION_ONLY'):      # 不需要邀请码
-            if settings.get('DEEPAUTH_EMAIL_VERIFICATION'):   # 需要邮箱激活验证码
-                if 'email' not in data:
-                    raise serializers.ValidationError('Need a email')
-            return data
-        else:
-            if settings.get('DEEPAUTH_EMAIL_VERIFICATION'):
-                if 'email' not in data:
-                    raise serializers.ValidationError('Need a email')
-            if Account.objects.count() <= 0:   # 管理员不需要邀请码
-                return data
-            if 'invitation_code' not in data:
-                raise serializers.ValidationError('Need a invitation code')
-            elif InvitationCode.objects.filter(code=data['invitation_code']) is None:
-                raise serializers.ValidationError('Invitation code error')
-            else:
-                return data
+        if settings.get('DEEPAUTH_INVITATION_ONLY') and data['invitation_code'] is None and Account.objects.all().count():
+            # 需要邀请码
+            raise serializers.ValidationError('Invitation code is required.')
+        if settings.get('DEEPAUTH_EMAIL_CONF') and data['email'] is None:
+            # 需要邮箱
+            raise serializers.ValidationError('Email is required.')
 
 
 class LoginViewSerializer(serializers.Serializer):
@@ -113,7 +116,7 @@ class PasswordViewSerializer(serializers.Serializer):
 class DetailViewSerializer(ModifyViewSerializer):
     def __init__(self, *args, **kwargs):
         self.model = Account
-        self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar_url')
+        self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel')
         super().__init__(*args, **kwargs)
 
 
@@ -122,58 +125,31 @@ class AdminAccountViewSerializer(ModifyViewSerializer):
 
     def __init__(self, *args, **kwargs):
         self.model = Account
-        self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'password', 'is_active')
+        self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel', 'password', 'is_active')
         super().__init__(*args, **kwargs)
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
 
 
-class AvatarGetViewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-
-    def validate_password(self, value):
-        return validate_password(value)
-
-
-class AvatarPostViewSerializer(serializers.Serializer):
-    avatar = serializers.ImageField()
-    public = models.BooleanField(default=False)
-    t_create = models.DateTimeField(auto_now_add=True)
-    t_modify = models.DateTimeField(auto_now=True)
-    status = models.IntegerField()
-
-
-class ActivateViewSerializer(serializers.Serializer):
+class ActivateEmailViewSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     prefix = serializers.URLField()
 
     def validate_id(self, value):
-        obj = Account.objects.filter(pk=id)
-        if obj is None:
-            raise serializers.ValidationError(NotFound.default_detail)
-        return value
+        return validate_id(Account, None, value)
 
 
-class ValidateViewSerializer(ObjectGetViewSerializer):
+class ValidateEmailViewSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    code = serializers.CharField(min_length=36, max_length=40)
+    code = serializers.UUIDField()
 
     def validate_id(self, value):
-        obj = Account.objects.filter(pk=id)
-        if obj is None:
-            raise serializers.ValidationError(NotFound.default_detail)
-        return value
+        return validate_id(Account, None, value)
 
-
-class InvitationCodeViewSerializer(ObjectGetViewSerializer):
-    user_id = serializers.IntegerField()
-
-    def validate_id(self, value):
-        obj = Account.objects.filter(pk=id)
-        if obj is None:
-            raise serializers.ValidationError(NotFound.default_detail)
-        return value
-
-class ImagePostViewSerializer(serializers.Serializer):
-    avatar = serializers.ImageField(max_length=1024 * 1024)
+    def validate(self, data):
+        account = Account.objects.get(data['id'])
+        if account.verified_email:
+            raise serializers.ValidationError('Email has already been verified.')
+        if account.verification_email_t is None or account.verification_email_code is None:
+            raise serializers.ValidationError('Verification code has not been generated yet.')

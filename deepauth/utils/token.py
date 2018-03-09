@@ -1,8 +1,8 @@
 import json
+import pycurl
 from datetime import timedelta
 from io import BytesIO
 
-import pycurl
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone

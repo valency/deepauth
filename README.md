@@ -4,12 +4,19 @@ To install, add the following items to your Django settings:
 - `AUTH_USER_MODEL = 'deepauth.Account'`
 ```
 DEEPAUTH_INVITATION_ONLY = True
-DEEPAUTH_EMAIL_VERIFICATION = {
+Invatitation code must be provided if set to true.
+
+DEEPAUTH_EMAIL_CONF = {
     'server': '',
+    'port':465,
     'username': '',
-    'password': ''
+    'password': '',
+    'content':'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\nDeepauth Team',
 }
 ```
+
+0: name
+1: link
 
 To enable access, add the following code to your url patterns:
 ```
@@ -23,3 +30,4 @@ urlpatterns = [
     url(r'docs/', include_docs_urls('API Docs'))
 ]
 ```
+
