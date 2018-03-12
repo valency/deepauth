@@ -19,13 +19,14 @@ class RegisterView(APIView):
     post:
     **注册用户**
 
-    - <span class='badge'>R</span> `username` 用户名，不能超过 150 个字符
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
     - `email` 邮箱
     - `last_name` 用户称呼（姓），不能超过 30 个字符
     - `invitation_code` 邀请码
-    - `phone_number` 手机号码
+    - `tel` 手机号码
+    - `username` 用户名，不能超过 150 个字符
+    - `country` 国家
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -57,15 +58,17 @@ class RegisterView(APIView):
             # Update password log
             password_log = PasswordLog(account=account, ip=get_ip(request), password=account.password)
             password_log.save()
+            if invitation_code:
+                # 用户注册完后, 邀请码失效
+                invitation_code = InvitationCode.objects.get(id=invitation_code)
+                invitation_code.user = account
+                invitation_code.save()
             # 赠送邀请码
             for i in range(INVITATION_LIMIT):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
-            # 用户注册完后, 邀请码失效
-            invitation_code = InvitationCode.objects.get(id=invitation_code)
-            invitation_code.user = account
-            invitation_code.save()
             return Response(status=status.HTTP_201_CREATED)
+
         else:
             raise ParseError(pp.errors)
 
@@ -85,9 +88,15 @@ class LoginView(APIView):
     def get(self, request):
         pp = self.serializer_class(data=request.GET)
         if pp.is_valid():
-            username = pp.validated_data['username']
             password = pp.validated_data['password']
-            account = authenticate(username=username, password=password)
+            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
+            email = pp.validated_data['email'] if 'email' in pp.validated_data else None
+            if username:
+                account = authenticate(username=username, password=password)
+            elif email:
+                account = authenticate(email=email, password=password)
+            if not account.verified_email:
+                return Response(status=status.HTTP_403_FORBIDDEN)
             if account is not None:
                 token, has_created = Token.objects.get_or_create(user=account)
                 if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
@@ -228,6 +237,11 @@ class AdminAccountView(APIView):
 
 
 class ActivateEmailView(APIView):
+    """
+    get:
+    - <span class='badge'>R</span> `id` 用户 id ,
+    - <span class='badge'>R</span> `prefix` url 地址
+    """
     authentication_classes = ()
     permission_classes = (AllowAny,)
     serializer_class = ActivateEmailViewSerializer
@@ -238,10 +252,10 @@ class ActivateEmailView(APIView):
             uid = pp.validated_data['id']
             prefix = pp.validated_data['prefix']
             account = Account.objects.get(pk=uid)
-            email_conf = settings.get('DEEPAUTH_EMAIL_CONF')
             # 确定邮箱设定有提供
-            if email_conf is None:
+            if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') is False:
                 raise NotImplementedError
+            email_conf = settings.DEEPAUTH_EMAIL_CONF
             # 已经激活的用户不再发激活码
             if account.verified_email:
                 raise NotAcceptable('Email has already been verified.')
@@ -251,7 +265,7 @@ class ActivateEmailView(APIView):
             subject = 'Activate Your Account'
             content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' + str(account.verification_email_code) + '&' + 'id=' + str(uid))
             try:
-                send_mail(email_conf['username'], email_conf['password'], [account.email, ], subject, content, email_conf['server'], email_conf['port'])
+                send_mail(email_conf['username'], email_conf['password'], [account.email], subject, content, email_conf['server'], email_conf['port'])
             except Exception as exp:
                 raise exp
             return Response(status=status.HTTP_200_OK)
@@ -260,6 +274,11 @@ class ActivateEmailView(APIView):
 
 
 class ValidateEmailView(APIView):
+    """
+    get:
+    - <span class='badge'>R</span> `id` 用户 id ,
+    - <span class='badge'>R</span> `code` 用户的激活码
+    """
     authentication_classes = ()
     permission_classes = (AllowAny,)
     serializer_class = ValidateEmailViewSerializer
