@@ -38,15 +38,13 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 
 class RegisterViewSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=30)
-    last_name = serializers.CharField(max_length=30, required=False, default=None)
+    last_name = serializers.CharField(max_length=30, required=False, default='')
     username = serializers.CharField(max_length=150, required=False, default=None)
     password = serializers.CharField()
-    email = serializers.EmailField(required=False, default=None)
+    email = serializers.EmailField(required=False, default='')
     tel = serializers.CharField(max_length=32, required=False, default=None)
     country = serializers.CharField(max_length=8, required=False, default=None)
-    print('before serialize invitation')
     invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    print('after serialize invitation')
 
     def validate_username(self, value):
         if value is None:
@@ -62,7 +60,7 @@ class RegisterViewSerializer(serializers.Serializer):
         return validate_password(value)
 
     def validate_email(self, value):
-        if value is not None:
+        if value:
             accounts = Account.objects.filter(email=value)
             if accounts.count():
                 raise serializers.ValidationError('Content is conflict.')
@@ -71,15 +69,14 @@ class RegisterViewSerializer(serializers.Serializer):
     def validate_invitation_code(self, value):
         if value is not None:
             try:
-                print('before invitation error')
                 InvitationCode.objects.get(id=value, user=None)
-                print('not invitation error')
             except ObjectDoesNotExist:
                 raise serializers.ValidationError(NotFound.default_detail)
         return value
 
     def validate(self, data):
-        if hasattr(settings, 'DEEPAUTH_INVITATION_ONLY') and data['invitation_code'] is None and Account.objects.all().count():
+        if hasattr(settings, 'DEEPAUTH_INVITATION_ONLY') and settings.DEEPAUTH_INVITATION_ONLY \
+                and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
         if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') and data['email'] is None:
@@ -158,11 +155,3 @@ class ValidateEmailViewSerializer(serializers.Serializer):
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
-
-    def validate(self, data):
-        account = Account.objects.get(data['id'])
-        if account.verified_email:
-            raise serializers.ValidationError('Email has already been verified.')
-        if account.verification_email_t is None or account.verification_email_code is None:
-            raise serializers.ValidationError('Verification code has not been generated yet.')
-        return data
