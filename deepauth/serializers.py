@@ -1,3 +1,4 @@
+from captcha.models import CaptchaStore
 from deeputils.serializers import *
 from django.conf import settings
 from django.utils import timezone
@@ -45,6 +46,8 @@ class RegisterViewSerializer(serializers.Serializer):
     tel = serializers.CharField(max_length=32, required=False, default=None)
     country = serializers.CharField(max_length=8, required=False, default=None)
     invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
+    hashkey = serializers.CharField(max_length=40, min_length=40) # 验证码 hashkey 该字段需在前端页面隐藏
+    response = serializers.CharField(max_length=4, min_length=4) # 验证码答案
 
     def validate_username(self, value):
         if value is None:
@@ -75,6 +78,12 @@ class RegisterViewSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
+        hashkey = data['hashkey']
+        response = data['response'].lower()
+        CaptchaStore.remove_expired()
+        captcha = CaptchaStore.objects.filter(hashkey=hashkey, response=response)
+        if captcha.count() <= 0:
+            raise serializers.ValidationError('The value of captcha is not correct.')
         if hasattr(settings, 'DEEPAUTH_INVITATION_ONLY') and settings.DEEPAUTH_INVITATION_ONLY \
                 and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
@@ -89,13 +98,21 @@ class LoginViewSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, required=False)
     email = serializers.EmailField(required=False)
     password = serializers.CharField()
+    hashkey = serializers.CharField(max_length=40, min_length=40)  # 验证码 hashkey 该字段需在前端页面隐藏
+    response = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
 
     def validate_password(self, value):
         return validate_password(value)
 
-    def validate_data(self, data):
+    def validate(self, data):
+        hashkey = data['hashkey']
+        response = data['response'].lower()
+        CaptchaStore.remove_expired()
+        captcha = CaptchaStore.objects.filter(hashkey=hashkey, response=response)
+        if captcha.count() <= 0:
+            raise serializers.ValidationError('The value of captcha is not correct.')
         if 'username' not in data and 'email' not in data:
-            serializers.ValidationError('Email or username is required.')
+            raise serializers.ValidationError('Email or username is required.')
         return data
 
 

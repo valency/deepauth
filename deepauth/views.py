@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from captcha.helpers import captcha_image_url
 from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
@@ -21,6 +22,9 @@ class RegisterView(APIView):
 
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
+    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
+    - <span class='badge'>R</span> `response` 验证码的答案
+    - 验证码失效时间为 5 分钟
     - `email` 邮箱
     - `last_name` 用户称呼（姓），不能超过 30 个字符
     - `invitation_code` 邀请码
@@ -79,6 +83,9 @@ class LoginView(APIView):
     **登录**
 
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
+    - <span class='badge'>R</span> `response` 验证码的答案
+    - 验证码失效时间为 5 分钟
     - `username` 用户名，不能超过 150 个字符
     - `email` 邮箱
     - `username` 和 `email` 至少需要一个
@@ -191,7 +198,7 @@ class DetailView(APIView):
         account = Account.objects.get(pk=request.user.pk)
         resp = AccountSerializer(account).data
         resp['access_log'] = AccessLogSerializer(AccessLog.objects.filter(account=account)[:10], many=True).data
-        resp['invitation_code'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account), many=True).data
+        resp['invitation_code'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account, user=None), many=True).data
         return Response(resp)
 
     def put(self, request):
@@ -332,3 +339,21 @@ class ValidateEmailView(APIView):
                 raise NotAcceptable('Verification code is expired.')
         else:
             raise ParseError(pp.errors)
+
+
+class CaptchaObtainView(APIView):
+    """
+        get:
+        <span class='badge'><i class='fa fa-lock'></i></span> **获取验证码信息 hashkey image_url**
+    """
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        new_key = CaptchaStore.pick()
+        CaptchaStore.remove_expired()   # 删除失效的验证码，过期时间为 5 分钟
+        to_json_response = {
+            'hashkey': new_key,
+            'image_url': captcha_image_url(new_key),
+        }
+        return Response(to_json_response)
