@@ -357,3 +357,28 @@ class CaptchaObtainView(APIView):
             'image_url': captcha_image_url(new_key),
         }
         return Response(to_json_response)
+
+
+class UserIdView(APIView):
+    """
+    get:
+    **获取用户 ID**
+
+    - `email` 邮箱
+    - `username` 用户名
+    - `email` 和 `username` 至少需要一个
+
+    """
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    serializer_class = UserIdViewSerializer
+
+    def get(self, request):
+        pp = self.serializer_class(data=request.GET)
+        if pp.is_valid():
+            email = pp.validated_data['email'] if 'email' in pp.validated_data else None
+            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
+            account = Account.objects.filter(email=email) if email else Account.objects.filter(username=username)
+            return Response(dict(user_id=account.id))
+        else:
+            raise ParseError(pp.errors)

@@ -172,3 +172,20 @@ class ValidateEmailViewSerializer(serializers.Serializer):
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
+
+class UserIdViewSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, required=False)
+    email = serializers.EmailField(required=False)
+
+    def validate(self, data):
+        if 'username' not in data and 'email' not in data:
+            raise serializers.ValidationError('Username or email missing.')
+        elif 'email' in data:
+            account = Account.objects.filter(email=data['email'])
+            if account.count() <= 0:
+                raise serializers.ValidationError('Account does not exist.')
+        else:
+            account = Account.objects.filter(username=data['username'])
+            if account.count() <= 0:
+                raise serializers.ValidationError('Account does not exist.')
+        return data

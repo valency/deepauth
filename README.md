@@ -1,7 +1,6 @@
 # Deepera Authentication System
 To use captcha, install the following items:
 - apt-get -y install libz-dev libjpeg-dev libfreetype6-dev python-dev
-- pip3 install  django-simple-captcha
 
 To install, add the following items to your Django settings:
 - `deepauth` to `INSTALLED_APPS`
