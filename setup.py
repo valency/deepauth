@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='deepauth',
-    version='1.3.12',
+    version='1.3.15',
     packages=['deepauth', 'deepauth.utils'],
     url='http://open.deepera.com',
     license='CPL-3.0',

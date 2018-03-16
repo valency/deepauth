@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.conf.urls import url, include
 
 from deepauth.views import *
 
@@ -11,6 +11,7 @@ urlpatterns = [
     url(r'detail/$', DetailView.as_view()),
     url(r'email/activate/$', ActivateEmailView.as_view()),
     url(r'email/validate/$', ValidateEmailView.as_view()),
+    url(r'captcha/information/$', CaptchaObtainView.as_view()),
     # ------- Multiple User Management (Admin Only) -------
     url(r'admin/account/$', AdminAccountView.as_view())
 ]

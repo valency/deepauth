@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from captcha.helpers import captcha_image_url
 from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
@@ -21,6 +22,9 @@ class RegisterView(APIView):
 
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
+    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
+    - <span class='badge'>R</span> `response` 验证码的答案
+    - 验证码失效时间为 5 分钟
     - `email` 邮箱
     - `last_name` 用户称呼（姓），不能超过 30 个字符
     - `invitation_code` 邀请码
@@ -67,7 +71,7 @@ class RegisterView(APIView):
             for i in range(INVITATION_LIMIT):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
-            return Response(status=status.HTTP_201_CREATED)
+            return Response({'id': account.id}, status=status.HTTP_201_CREATED)
 
         else:
             raise ParseError(pp.errors)
@@ -78,8 +82,13 @@ class LoginView(APIView):
     get:
     **登录**
 
-    - <span class='badge'>R</span> `username` 用户名，不能超过 150 个字符
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
+    - <span class='badge'>R</span> `response` 验证码的答案
+    - 验证码失效时间为 5 分钟
+    - `username` 用户名，不能超过 150 个字符
+    - `email` 邮箱
+    - `username` 和 `email` 至少需要一个
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -89,15 +98,21 @@ class LoginView(APIView):
         pp = self.serializer_class(data=request.GET)
         if pp.is_valid():
             password = pp.validated_data['password']
-            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
             email = pp.validated_data['email'] if 'email' in pp.validated_data else None
-            if username:
-                account = authenticate(username=username, password=password)
-            elif email:
-                account = authenticate(email=email, password=password)
-            if not account.verified_email:
-                return Response(status=status.HTTP_403_FORBIDDEN)
+            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
+            # 用户优先以邮箱账号登录
+            if email is not None:
+                try:
+                    account = Account.objects.get(email=email)
+                except Account.DoesNotExist as exp:
+                    raise NotAuthenticated()
+                username = account.username
+            account = authenticate(username=username, password=password)
             if account is not None:
+                # 用户未激活邮箱禁止登录
+                if account.verified_email is False:
+                    return Response({'detail': 'Account is not verified by email.'},
+                                    status=status.HTTP_403_FORBIDDEN)
                 token, has_created = Token.objects.get_or_create(user=account)
                 if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
                     Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
@@ -170,7 +185,9 @@ class DetailView(APIView):
     put:
     <span class='badge'><i class='fa fa-lock'></i></span> **修改用户信息**
 
-    - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）
+    - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、
+    `email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、
+    `country` 国家、`tel` 手机号码
     - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
     """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -181,17 +198,19 @@ class DetailView(APIView):
         account = Account.objects.get(pk=request.user.pk)
         resp = AccountSerializer(account).data
         resp['access_log'] = AccessLogSerializer(AccessLog.objects.filter(account=account)[:10], many=True).data
-        resp['invitation_code'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account), many=True).data
+        resp['invitation_code'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account, user=None), many=True).data
         return Response(resp)
 
     def put(self, request):
         account = Account.objects.get(pk=request.user.pk)
         pp = self.serializer_class(data=request.data)
         if pp.is_valid():
-            Account.objects.filter(pk=request.user.pk).update(**dict(pp.validated_data))
             if 'email' in pp.validated_data:
-                account.verified_email = False
-                account.save()
+                account = Account.objects.filter(email=pp.validated_data['email'])
+                if account.count():
+                    raise NotAcceptable('Email has already been registered.')
+                pp.validated_data['verified_email'] = False
+            Account.objects.filter(pk=request.user.pk).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
             raise ParseError(pp.errors)
@@ -206,7 +225,9 @@ class AdminAccountView(APIView):
     <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **修改用户信息**
 
     - <span class='badge'>R</span> `id` 用户 ID
-    - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）
+    - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、
+    `email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、
+    `tel` 手机号码、`password` 密码、`is_active` 是否活跃
     - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
     """
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -263,9 +284,11 @@ class ActivateEmailView(APIView):
             account.verification_email_t = timezone.now()
             account.save()
             subject = 'Activate Your Account'
-            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' + str(account.verification_email_code) + '&' + 'id=' + str(uid))
+            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' +
+                                                   str(account.verification_email_code) + '&' + 'id=' + str(uid))
             try:
-                send_mail(email_conf['username'], email_conf['password'], [account.email], subject, content, email_conf['server'], email_conf['port'])
+                send_mail(email_conf['username'], email_conf['password'], account.email, subject,
+                          content, email_conf['server'], email_conf['port'])
             except Exception as exp:
                 raise exp
             return Response(status=status.HTTP_200_OK)
@@ -276,7 +299,7 @@ class ActivateEmailView(APIView):
 class ValidateEmailView(APIView):
     """
     get:
-    - <span class='badge'>R</span> `id` 用户 id ,
+    - <span class='badge'>R</span> `id` 用户 ID ,
     - <span class='badge'>R</span> `code` 用户的激活码
     """
     authentication_classes = ()
@@ -289,16 +312,48 @@ class ValidateEmailView(APIView):
             uid = pp.validated_data['id']
             code = pp.validated_data['code']
             account = Account.objects.get(pk=uid)
+            if account.verified_email:
+                raise NotAcceptable('Email has already been verified.')
+            if account.verification_email_t is None or account.verification_email_code is None:
+                raise NotAcceptable('Verification code has not been generated yet.')
             if timezone.now().timestamp() - account.verification_email_t.timestamp() <= VALIDATION_TIME_LIMIT:
                 if code == account.verification_email_code:
                     account.verified_email = True
                     account.verification_email_code = None
                     account.verification_email_t = None
                     account.save()
-                    return Response(status=status.HTTP_200_OK)
+                    if hasattr(settings, 'AUTO_LOGIN') is False or not settings.AUTO_LOGIN:
+                        return Response(status=status.HTTP_200_OK)
+                    else:
+                        token, has_created = Token.objects.get_or_create(user=account)
+                        if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
+                            Token.objects.filter(user=account).update(key=token.generate_key(),
+                                                                      created=timezone.now())
+                        token = Token.objects.get(user=account)
+                        access_log = AccessLog(account=account, ip=get_ip(request), token=token)
+                        access_log.save()
+                        return Response({'token': token.key})
                 else:
                     raise NotAcceptable('Verification code is not correct.')
             else:
                 raise NotAcceptable('Verification code is expired.')
         else:
             raise ParseError(pp.errors)
+
+
+class CaptchaObtainView(APIView):
+    """
+        get:
+        <span class='badge'><i class='fa fa-lock'></i></span> **获取验证码信息 hashkey image_url**
+    """
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def get(self, request):
+        new_key = CaptchaStore.pick()
+        CaptchaStore.remove_expired()   # 删除失效的验证码，过期时间为 5 分钟
+        to_json_response = {
+            'hashkey': new_key,
+            'image_url': captcha_image_url(new_key),
+        }
+        return Response(to_json_response)
