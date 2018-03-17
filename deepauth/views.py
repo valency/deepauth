@@ -284,8 +284,9 @@ class ActivateEmailView(APIView):
             account.verification_email_t = timezone.now()
             account.save()
             subject = 'Activate Your Account'
+            team = 'AgileQuant'
             content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' +
-                                                   str(account.verification_email_code) + '&' + 'id=' + str(uid))
+                                                   str(account.verification_email_code) + '&' + 'id=' + str(uid), team)
             try:
                 send_mail(email_conf['username'], email_conf['password'], account.email, subject,
                           content, email_conf['server'], email_conf['port'])
