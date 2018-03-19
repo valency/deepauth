@@ -14,6 +14,9 @@ Invatitation code must be provided if set to true.
 AUTO_LOGIN = True
 User will auto login in when verify success if set to true.
 
+TEAM_NAME = 'AgileQuant'
+Customize user emails with this parameter.
+
 DEEPAUTH_EMAIL_CONF = {
     'server': '',
     'port':465,

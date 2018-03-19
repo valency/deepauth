@@ -9,7 +9,7 @@ urlpatterns = [
     url(r'logout/$', LogoutView.as_view()),
     url(r'password/$', PasswordView.as_view()),
     url(r'detail/$', DetailView.as_view()),
-    url(r'user/id$', UserIdView.as_view()),
+    url(r'user/id/$', UserIdView.as_view()),
     url(r'email/activate/$', ActivateEmailView.as_view()),
     url(r'email/validate/$', ValidateEmailView.as_view()),
     url(r'captcha/information/$', CaptchaObtainView.as_view()),

@@ -274,7 +274,7 @@ class ActivateEmailView(APIView):
             prefix = pp.validated_data['prefix']
             account = Account.objects.get(pk=uid)
             # 确定邮箱设定有提供
-            if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') is False:
+            if getattr(settings, 'DEEPAUTH_EMAIL_CONF', None) is None:
                 raise NotImplementedError
             email_conf = settings.DEEPAUTH_EMAIL_CONF
             # 已经激活的用户不再发激活码
@@ -284,9 +284,10 @@ class ActivateEmailView(APIView):
             account.verification_email_t = timezone.now()
             account.save()
             subject = 'Activate Your Account'
-            team = 'AgileQuant'
+            team_name = getattr(settings, 'TEAM_NAME', 'AgileQuant')
             content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' +
-                                                   str(account.verification_email_code) + '&' + 'id=' + str(uid), team)
+                                                   str(account.verification_email_code) + '&' + 'id='
+                                                   + str(uid), team_name)
             try:
                 send_mail(email_conf['username'], email_conf['password'], account.email, subject,
                           content, email_conf['server'], email_conf['port'])
@@ -323,7 +324,7 @@ class ValidateEmailView(APIView):
                     account.verification_email_code = None
                     account.verification_email_t = None
                     account.save()
-                    if hasattr(settings, 'AUTO_LOGIN') is False or not settings.AUTO_LOGIN:
+                    if not getattr(settings, 'AUTO_LOGIN', None):
                         return Response(status=status.HTTP_200_OK)
                     else:
                         token, has_created = Token.objects.get_or_create(user=account)
@@ -379,7 +380,7 @@ class UserIdView(APIView):
         if pp.is_valid():
             email = pp.validated_data['email'] if 'email' in pp.validated_data else None
             username = pp.validated_data['username'] if 'username' in pp.validated_data else None
-            account = Account.objects.filter(email=email) if email else Account.objects.filter(username=username)
+            account = Account.objects.get(email=email) if email else Account.objects.get(username=username)
             return Response(dict(user_id=account.id))
         else:
             raise ParseError(pp.errors)

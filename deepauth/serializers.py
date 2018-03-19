@@ -84,8 +84,8 @@ class RegisterViewSerializer(serializers.Serializer):
         captcha = CaptchaStore.objects.filter(hashkey=hashkey, response=response)
         if captcha.count() <= 0:
             raise serializers.ValidationError('The value of captcha is not correct.')
-        if hasattr(settings, 'DEEPAUTH_INVITATION_ONLY') and settings.DEEPAUTH_INVITATION_ONLY \
-                and data['invitation_code'] is None and Account.objects.all().count():
+        if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None \
+                and Account.objects.all().count():
             # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
         if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') and data['email'] is None:
