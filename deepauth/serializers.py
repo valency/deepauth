@@ -46,8 +46,8 @@ class RegisterViewSerializer(serializers.Serializer):
     tel = serializers.CharField(max_length=32, required=False, default=None)
     country = serializers.CharField(max_length=8, required=False, default=None)
     invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    hashkey = serializers.CharField(max_length=40, min_length=40) # 验证码 hashkey 该字段需在前端页面隐藏
-    response = serializers.CharField(max_length=4, min_length=4) # 验证码答案
+    hashkey = serializers.CharField(max_length=40, min_length=40)  # 验证码 hashkey 该字段需在前端页面隐藏
+    response = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
 
     def validate_username(self, value):
         if value is None:
@@ -172,20 +172,3 @@ class ValidateEmailViewSerializer(serializers.Serializer):
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
-
-class UserIdViewSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150, required=False)
-    email = serializers.EmailField(required=False)
-
-    def validate(self, data):
-        if 'username' not in data and 'email' not in data:
-            raise serializers.ValidationError('Username or email missing.')
-        elif 'email' in data:
-            account = Account.objects.filter(email=data['email'])
-            if account.count() <= 0:
-                raise serializers.ValidationError('Account does not exist.')
-        else:
-            account = Account.objects.filter(username=data['username'])
-            if account.count() <= 0:
-                raise serializers.ValidationError('Account does not exist.')
-        return data

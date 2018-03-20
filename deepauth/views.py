@@ -1,5 +1,5 @@
-from django.contrib.auth import authenticate
 from captcha.helpers import captcha_image_url
+from django.contrib.auth import authenticate
 from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
@@ -104,22 +104,31 @@ class LoginView(APIView):
             if email is not None:
                 try:
                     account = Account.objects.get(email=email)
-                except Account.DoesNotExist as exp:
+                except ObjectDoesNotExist:
                     raise NotAuthenticated()
                 username = account.username
             account = authenticate(username=username, password=password)
             if account is not None:
-                # 用户未激活邮箱禁止登录
                 if account.verified_email is False:
-                    return Response({'detail': 'Account is not verified by email.'},
-                                    status=status.HTTP_403_FORBIDDEN)
-                token, has_created = Token.objects.get_or_create(user=account)
-                if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
-                    Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
-                token = Token.objects.get(user=account)
-                access_log = AccessLog(account=account, ip=get_ip(request), token=token)
-                access_log.save()
-                return Response({'token': token.key})
+                    # 用户未激活邮箱禁止登录
+                    resp_status = status.HTTP_403_FORBIDDEN
+                    resp_token = None
+                    resp_detail = 'Account is not verified by email.'
+                else:
+                    token, has_created = Token.objects.get_or_create(user=account)
+                    if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
+                        Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
+                    token = Token.objects.get(user=account)
+                    access_log = AccessLog(account=account, ip=get_ip(request), token=token)
+                    access_log.save()
+                    resp_status = status.HTTP_200_OK
+                    resp_token = token.key
+                    resp_detail = None
+                return Response({
+                    'id': account.id,
+                    'token': resp_token,
+                    'detail': resp_detail
+                }, status=resp_status)
             else:
                 raise NotAuthenticated()
         else:
@@ -285,12 +294,9 @@ class ActivateEmailView(APIView):
             account.save()
             subject = 'Activate Your Account'
             team_name = getattr(settings, 'TEAM_NAME', 'AgileQuant')
-            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' +
-                                                   str(account.verification_email_code) + '&' + 'id='
-                                                   + str(uid), team_name)
+            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' + str(account.verification_email_code) + '&' + 'id=' + str(uid), team_name)
             try:
-                send_mail(email_conf['username'], email_conf['password'], account.email, subject,
-                          content, email_conf['server'], email_conf['port'])
+                send_mail(email_conf['server'], email_conf['port'], email_conf['username'], email_conf['password'], account.email, subject, content)
             except Exception as exp:
                 raise exp
             return Response(status=status.HTTP_200_OK)
@@ -343,44 +349,19 @@ class ValidateEmailView(APIView):
             raise ParseError(pp.errors)
 
 
-class CaptchaObtainView(APIView):
+class CaptchaView(APIView):
     """
         get:
-        <span class='badge'><i class='fa fa-lock'></i></span> **获取验证码信息 hashkey image_url**
+        <span class='badge'><i class='fa fa-lock'></i></span> **获取验证码**
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
 
     def get(self, request):
-        new_key = CaptchaStore.pick()
-        CaptchaStore.remove_expired()   # 删除失效的验证码，过期时间为 5 分钟
+        CaptchaStore.remove_expired()  # 删除失效的验证码，过期时间为 5 分钟
+        captcha_key = CaptchaStore.pick()
         to_json_response = {
-            'hashkey': new_key,
-            'image_url': captcha_image_url(new_key),
+            'key': captcha_key,
+            'url': captcha_image_url(captcha_key),
         }
         return Response(to_json_response)
-
-
-class UserIdView(APIView):
-    """
-    get:
-    **获取用户 ID**
-
-    - `email` 邮箱
-    - `username` 用户名
-    - `email` 和 `username` 至少需要一个
-
-    """
-    authentication_classes = ()
-    permission_classes = (AllowAny,)
-    serializer_class = UserIdViewSerializer
-
-    def get(self, request):
-        pp = self.serializer_class(data=request.GET)
-        if pp.is_valid():
-            email = pp.validated_data['email'] if 'email' in pp.validated_data else None
-            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
-            account = Account.objects.get(email=email) if email else Account.objects.get(username=username)
-            return Response(dict(user_id=account.id))
-        else:
-            raise ParseError(pp.errors)

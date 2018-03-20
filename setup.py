@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='deepauth',
-    version='1.3.19',
+    version='1.3.20',
     packages=['deepauth', 'deepauth.utils'],
     url='http://open.deepera.com',
     license='CPL-3.0',
@@ -13,6 +13,6 @@ setup(
         'django',
         'django-ipware',
         'djangorestframework',
-        'django-simple-captcha',
+        'django-simple-captcha'
     ],
 )
