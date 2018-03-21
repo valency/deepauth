@@ -64,11 +64,12 @@ class RegisterView(APIView):
             password_log.save()
             if invitation_code:
                 # 用户注册完后, 邀请码失效
-                invitation_code = InvitationCode.objects.get(id=invitation_code)
+                invitation_code = InvitationCode.objects.get(id=invitation_code, user=None)
                 invitation_code.user = account
                 invitation_code.save()
             # 赠送邀请码
             for i in range(INVITATION_LIMIT):
+            # for i in range(getattr(settings, 'DEEPAUTH_INVITATION_ONLY', 10)):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
             return Response({'id': account.id}, status=status.HTTP_201_CREATED)
@@ -264,6 +265,31 @@ class AdminAccountView(APIView):
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
             raise ParseError(pp.errors)
+
+
+# class AdminAccountTreeView(APIView):
+#     """
+#     get:
+#     - <span class='badge'>R</span> `id` 用户 ID
+#     """
+#     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
+#     permission_classes = (IsAdminUser,)
+#     serializer_class = AdminAccountTreeViewSerializer
+#
+#     def get(self, request):
+#         pp = self.serializer_class(data=request.GET)
+#         if pp.is_valid():
+#             account = Account.objects.get(pk=pp.validated_data['id'])
+#             invitation_code = InvitationCode.objects.get(user=account)
+#             account_list = [account]
+#             while invitation_code.account.id != 1:
+#                 account = invitation_code.account
+#                 account_list.append(account)
+#                 invitation_code = InvitationCode.objects.get(user=account)
+#             account_list.append(invitation_code.account)
+#             return Response(AccountSerializer(account_list, many=True).data)
+#         else:
+#             raise ParseError(pp.errors)
 
 
 class ActivateEmailView(APIView):
