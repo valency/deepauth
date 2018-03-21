@@ -22,7 +22,7 @@ DEEPAUTH_EMAIL_CONF = {
     'port':465,
     'username': '',
     'password': '',
-    'content':'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\nDeepauth Team',
+    'content':'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\n{2} Team',
 }
 ```
 

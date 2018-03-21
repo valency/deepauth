@@ -13,5 +13,6 @@ urlpatterns = [
     url(r'email/activate/$', ActivateEmailView.as_view()),
     url(r'email/validate/$', ValidateEmailView.as_view()),
     # ------- Multiple User Management (Admin Only) -------
-    url(r'admin/account/$', AdminAccountView.as_view())
+    url(r'admin/account/$', AdminAccountView.as_view()),
+    # url(r'admin/account/tree/$', AdminAccountTreeView.as_view()),
 ]

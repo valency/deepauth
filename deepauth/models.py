@@ -34,5 +34,5 @@ class PasswordLog(models.Model):
 
 class InvitationCode(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='account')
-    user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='user')
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='invitation_account')
+    user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='invitation_user')

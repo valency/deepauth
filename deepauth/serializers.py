@@ -158,6 +158,17 @@ class AdminAccountViewSerializer(ModifyViewSerializer):
         return validate_id(Account, None, value)
 
 
+# class AdminAccountTreeViewSerializer(serializers.Serializer):
+#     id = serializers.IntegerField()
+#
+#     def validate_id(self, value):
+#         if value == 1:
+#             raise serializers.ValidationError('Admin has no invitationCode.')
+#         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) is False:
+#             raise serializers.ValidationError('No need for invitationCode.')
+#         return validate_id(Account, None, value)
+
+
 class ActivateEmailViewSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     prefix = serializers.URLField()
