@@ -11,7 +11,7 @@ To install, add the following items to your Django settings:
 DEEPAUTH_INVITATION_ONLY = True
 Invatitation code must be provided if set to true.
 
-AUTO_LOGIN = True
+DEEPAUTH_AUTO_LOGIN = True
 User will auto login in when verify success if set to true.
 
 TEAM_NAME = 'AgileQuant'

@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from captcha.helpers import captcha_image_url
+from captcha.models import CaptchaStore
 from django.contrib.auth import authenticate
 from ipware.ip import get_ip
 from rest_framework import status
@@ -9,10 +12,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from deepauth.serializers import *
 from deepauth.utils.mailbox import send_mail
-from .serializers import *
-from .utils.password import *
-from .utils.token import *
+from deepauth.utils.password import change_password, auth_password
+from deepauth.utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 
 
 class RegisterView(APIView):
@@ -20,17 +23,16 @@ class RegisterView(APIView):
     post:
     **注册用户**
 
+    - `username` 用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
-    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
-    - <span class='badge'>R</span> `response` 验证码的答案
-    - 验证码失效时间为 5 分钟
-    - `email` 邮箱
     - `last_name` 用户称呼（姓），不能超过 30 个字符
-    - `invitation_code` 邀请码
+    - `email` 邮箱
     - `tel` 手机号码
-    - `username` 用户名，不能超过 150 个字符
     - `country` 国家
+    - `invitation_code` 邀请码
+    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
+    - <span class='badge'>R</span> `captcha_value` 验证码的答案
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -48,16 +50,11 @@ class RegisterView(APIView):
             country = pp.validated_data['country']
             invitation_code = pp.validated_data['invitation_code']
             # Create user
+            conf = dict(username=username, password=password, first_name=first_name, last_name=last_name, email=email, tel=tel, country=country)
             if Account.objects.count():
-                account = Account.objects.create_user(
-                    username=username, password=password, email=email,
-                    first_name=first_name, last_name=last_name, tel=tel, country=country
-                )
+                account = Account.objects.create_user(**conf)
             else:
-                account = Account.objects.create_superuser(
-                    username=username, password=password, email=email,
-                    first_name=first_name, last_name=last_name, tel=tel, country=country
-                )
+                account = Account.objects.create_superuser(**conf)
             account.save()
             # Update password log
             password_log = PasswordLog(account=account, ip=get_ip(request), password=account.password)
@@ -73,7 +70,6 @@ class RegisterView(APIView):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
             return Response({'id': account.id}, status=status.HTTP_201_CREATED)
-
         else:
             raise ParseError(pp.errors)
 
@@ -83,13 +79,11 @@ class LoginView(APIView):
     get:
     **登录**
 
-    - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
-    - <span class='badge'>R</span> `hashkey` 验证码的哈希值，建议 hidden
-    - <span class='badge'>R</span> `response` 验证码的答案
-    - 验证码失效时间为 5 分钟
-    - `username` 用户名，不能超过 150 个字符
+    - `username` 用户名，不能超过 150 个字符，如提供则会忽略 `email`
     - `email` 邮箱
-    - `username` 和 `email` 至少需要一个
+    - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
+    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
+    - <span class='badge'>R</span> `captcha_value` 验证码的答案
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -98,38 +92,21 @@ class LoginView(APIView):
     def get(self, request):
         pp = self.serializer_class(data=request.GET)
         if pp.is_valid():
+            username = pp.validated_data['username']
+            email = pp.validated_data['email']
+            tel = pp.validated_data['tel']
             password = pp.validated_data['password']
-            email = pp.validated_data['email'] if 'email' in pp.validated_data else None
-            username = pp.validated_data['username'] if 'username' in pp.validated_data else None
-            # 用户优先以邮箱账号登录
-            if email is not None:
-                try:
-                    account = Account.objects.get(email=email)
-                except ObjectDoesNotExist:
-                    raise NotAuthenticated()
-                username = account.username
-            account = authenticate(username=username, password=password)
+            # 用户优先以用户名账号登录
+            # TODO: 需要测试一下
+            account = auth_password([{'username': username}, {'email': email}, {'tel': tel}], password)
             if account is not None:
-                if account.verified_email is False:
-                    # 用户未激活邮箱禁止登录
-                    resp_status = status.HTTP_403_FORBIDDEN
-                    resp_token = None
-                    resp_detail = 'Account is not verified by email.'
-                else:
-                    token, has_created = Token.objects.get_or_create(user=account)
-                    if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
-                        Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
-                    token = Token.objects.get(user=account)
-                    access_log = AccessLog(account=account, ip=get_ip(request), token=token)
-                    access_log.save()
-                    resp_status = status.HTTP_200_OK
-                    resp_token = token.key
-                    resp_detail = None
-                return Response({
-                    'id': account.id,
-                    'token': resp_token,
-                    'detail': resp_detail
-                }, status=resp_status)
+                token, has_created = Token.objects.get_or_create(user=account)
+                if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
+                    Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
+                token = Token.objects.get(user=account)
+                access_log = AccessLog(account=account, ip=get_ip(request), token=token)
+                access_log.save()
+                return Response({'id': account.id, 'token': token.key})
             else:
                 raise NotAuthenticated()
         else:
@@ -216,10 +193,15 @@ class DetailView(APIView):
         pp = self.serializer_class(data=request.data)
         if pp.is_valid():
             if 'email' in pp.validated_data:
-                account = Account.objects.filter(email=pp.validated_data['email'])
-                if account.count():
+                email = pp.validated_data['email']
+                try:
+                    Account.objects.get(email=email)
                     raise NotAcceptable('Email has already been registered.')
-                pp.validated_data['verified_email'] = False
+                except ObjectDoesNotExist:
+                    account.email = email
+                    account.verified_email = False
+                    account.save()
+                    del pp.validated_data['email']
             Account.objects.filter(pk=request.user.pk).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
@@ -257,11 +239,17 @@ class AdminAccountView(APIView):
                 password = pp.validated_data['password']
                 change_password(account, password)
                 del pp.validated_data['password']
-                return Response(status=status.HTTP_202_ACCEPTED)
-            Account.objects.filter(pk=uid).update(**dict(pp.validated_data))
             if 'email' in pp.validated_data:
-                account.verified_email = False
-                account.save()
+                email = pp.validated_data['email']
+                try:
+                    Account.objects.get(email=email)
+                    raise NotAcceptable('Email has already been registered.')
+                except ObjectDoesNotExist:
+                    account.email = email
+                    account.verified_email = False
+                    account.save()
+                    del pp.validated_data['email']
+            Account.objects.filter(pk=uid).update(**dict(pp.validated_data))
             return Response(status=status.HTTP_202_ACCEPTED)
         else:
             raise ParseError(pp.errors)
@@ -292,6 +280,7 @@ class AdminAccountView(APIView):
 #             raise ParseError(pp.errors)
 
 
+# TODO: Code review @ 2018-03-23 14:00, should continue
 class ActivateEmailView(APIView):
     """
     get:
@@ -318,11 +307,9 @@ class ActivateEmailView(APIView):
             account.verification_email_code = uuid.uuid4()
             account.verification_email_t = timezone.now()
             account.save()
-            subject = 'Activate Your Account'
-            team_name = getattr(settings, 'TEAM_NAME', 'AgileQuant')
-            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' + str(account.verification_email_code) + '&' + 'id=' + str(uid), team_name)
+            content = email_conf['content'].format(account.first_name, prefix + '?' + 'code=' + str(account.verification_email_code) + '&' + 'id=' + str(uid))
             try:
-                send_mail(email_conf['server'], email_conf['port'], email_conf['username'], email_conf['password'], account.email, subject, content)
+                send_mail(email_conf['server'], email_conf['port'], email_conf['username'], email_conf['password'], account.email, email_conf['subject'], content)
             except Exception as exp:
                 raise exp
             return Response(status=status.HTTP_200_OK)
@@ -356,7 +343,7 @@ class ValidateEmailView(APIView):
                     account.verification_email_code = None
                     account.verification_email_t = None
                     account.save()
-                    if not getattr(settings, 'AUTO_LOGIN', None):
+                    if not getattr(settings, 'DEEPAUTH_AUTO_LOGIN', None):
                         return Response(status=status.HTTP_200_OK)
                     else:
                         token, has_created = Token.objects.get_or_create(user=account)
