@@ -1,10 +1,10 @@
-from captcha.models import CaptchaStore
 from deeputils.serializers import *
 from django.conf import settings
 from django.utils import timezone
 
-from .models import *
-from .utils.password import validate_password
+from deepauth.models import *
+from deepauth.utils.captcha import validate_captcha
+from deepauth.utils.password import validate_password
 
 
 # Model serializers
@@ -46,13 +46,12 @@ class RegisterViewSerializer(serializers.Serializer):
     tel = serializers.CharField(max_length=32, required=False, default=None)
     country = serializers.CharField(max_length=8, required=False, default=None)
     invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    hashkey = serializers.CharField(max_length=40, min_length=40)  # 验证码 hashkey 该字段需在前端页面隐藏
-    response = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
+    captcha_key = serializers.CharField(max_length=40, min_length=40)  # 验证码 hash key 该字段需在前端页面隐藏
+    captcha_value = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
 
     def validate_username(self, value):
         if value is None:
-            value = 'u' + str(timezone.now().timestamp())
-            return value
+            value = 'u' + str(int(timezone.now().timestamp() * 1000))
         try:
             Account.objects.get(username=value)
             raise serializers.ValidationError('Content is conflict.')
@@ -78,41 +77,31 @@ class RegisterViewSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        hashkey = data['hashkey']
-        response = data['response'].lower()
-        CaptchaStore.remove_expired()
-        captcha = CaptchaStore.objects.filter(hashkey=hashkey, response=response)
-        if captcha.count() <= 0:
-            raise serializers.ValidationError('The value of captcha is not correct.')
-        if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None \
-                and Account.objects.all().count():
+        validate_captcha(data)
+        if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
-        if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') and data['email'] is None:
-            # 需要邮箱
+        if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') and settings['DEEPAUTH_EMAIL_CONF']['required'] and data['email'] is None:
+            # TODO: 需要邮箱，不确定上面的判断对不对，测试一下
             raise serializers.ValidationError('Email is required.')
         return data
 
 
 class LoginViewSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150, required=False)
-    email = serializers.EmailField(required=False)
+    username = serializers.CharField(max_length=150, required=False, default=None)
+    email = serializers.EmailField(required=False, default=None)
+    tel = serializers.CharField(max_length=32, required=False, default=None)
     password = serializers.CharField()
-    hashkey = serializers.CharField(max_length=40, min_length=40)  # 验证码 hashkey 该字段需在前端页面隐藏
-    response = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
+    captcha_key = serializers.CharField(max_length=40, min_length=40)  # 验证码 hash key 该字段需在前端页面隐藏
+    captcha_value = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
 
     def validate_password(self, value):
         return validate_password(value)
 
     def validate(self, data):
-        hashkey = data['hashkey']
-        response = data['response'].lower()
-        CaptchaStore.remove_expired()
-        captcha = CaptchaStore.objects.filter(hashkey=hashkey, response=response)
-        if captcha.count() <= 0:
-            raise serializers.ValidationError('The value of captcha is not correct.')
-        if 'username' not in data and 'email' not in data:
-            raise serializers.ValidationError('Email or username is required.')
+        validate_captcha(data)
+        if data['username'] is None and data['email'] is None and data['tel'] is None:
+            raise serializers.ValidationError('At least one of the following identities is required: username, email, tel.')
         return data
 
 

@@ -9,25 +9,6 @@ from rest_framework.authentication import TokenAuthentication
 TOKEN_LIFETIME = 7
 
 
-# class DeepauthAuthentication(TokenAuthentication):
-#     # TODO: Remote authentication: connect to a remote Deepauth server and return user / token
-#     def authenticate_credentials(self, key):
-#         e = BytesIO()
-#         c = pycurl.Curl()
-#         c.setopt(pycurl.URL, settings.DEEPAUTH_URL + 'detail/')
-#         c.setopt(pycurl.HTTPHEADER, ['Authorization: Token ' + key])
-#         c.setopt(c.WRITEFUNCTION, e.write)
-#         c.perform()
-#         resp_body = e.getvalue().decode('UTF-8')
-#         resp_status = c.getinfo(pycurl.HTTP_CODE)
-#         if resp_status != 200:
-#             # TODO: What if not json?
-#             raise exceptions.AuthenticationFailed(json.loads(resp_body))
-#         else:
-#             # TODO: Should return user and token
-#             return None
-
-
 class ExpiringTokenAuthentication(TokenAuthentication):
     def authenticate_credentials(self, key):
         model = self.get_model()
