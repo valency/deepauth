@@ -22,17 +22,16 @@ class RegisterView(APIView):
     """
     post:
     **注册用户**
-
-    - `username` 用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
+    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
+    - <span class='badge'>R</span> `captcha_value` 验证码的答案
+    - `username` 用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个
     - `last_name` 用户称呼（姓），不能超过 30 个字符
     - `email` 邮箱
     - `tel` 手机号码
     - `country` 国家
     - `invitation_code` 邀请码
-    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
-    - <span class='badge'>R</span> `captcha_value` 验证码的答案
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -78,9 +77,7 @@ class LoginView(APIView):
     """
     get:
     **登录**
-
-    - `username` 用户名，不能超过 150 个字符，如提供则会忽略 `email`
-    - `email` 邮箱
+    - <span class='badge'>R</span> `certification` 用户名或邮箱或手机号
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
     - <span class='badge'>R</span> `captcha_value` 验证码的答案
@@ -92,13 +89,10 @@ class LoginView(APIView):
     def get(self, request):
         pp = self.serializer_class(data=request.GET)
         if pp.is_valid():
-            username = pp.validated_data['username']
-            email = pp.validated_data['email']
-            tel = pp.validated_data['tel']
+            certification = pp.validated_data['certification']
             password = pp.validated_data['password']
             # 用户优先以用户名账号登录
-            # TODO: 需要测试一下
-            account = auth_password([{'username': username}, {'email': email}, {'tel': tel}], password)
+            account = auth_password([{'username': certification}, {'email': certification}, {'tel': certification}], password)
             if account is not None:
                 token, has_created = Token.objects.get_or_create(user=account)
                 if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
@@ -280,7 +274,6 @@ class AdminAccountView(APIView):
 #             raise ParseError(pp.errors)
 
 
-# TODO: Code review @ 2018-03-23 14:00, should continue
 class ActivateEmailView(APIView):
     """
     get:

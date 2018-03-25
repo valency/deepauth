@@ -81,16 +81,13 @@ class RegisterViewSerializer(serializers.Serializer):
         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
-        if hasattr(settings, 'DEEPAUTH_EMAIL_CONF') and settings['DEEPAUTH_EMAIL_CONF']['required'] and data['email'] is None:
-            # TODO: 需要邮箱，不确定上面的判断对不对，测试一下
+        if getattr(settings, 'DEEPAUTH_EMAIL_CONF', False) and settings.DEEPAUTH_EMAIL_CONF['required'] is True and data['email'] is None:
             raise serializers.ValidationError('Email is required.')
         return data
 
 
 class LoginViewSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150, required=False, default=None)
-    email = serializers.EmailField(required=False, default=None)
-    tel = serializers.CharField(max_length=32, required=False, default=None)
+    certification = serializers.CharField(max_length=150)              # 用户名或邮箱或手机号
     password = serializers.CharField()
     captcha_key = serializers.CharField(max_length=40, min_length=40)  # 验证码 hash key 该字段需在前端页面隐藏
     captcha_value = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
@@ -100,8 +97,6 @@ class LoginViewSerializer(serializers.Serializer):
 
     def validate(self, data):
         validate_captcha(data)
-        if data['username'] is None and data['email'] is None and data['tel'] is None:
-            raise serializers.ValidationError('At least one of the following identities is required: username, email, tel.')
         return data
 
 

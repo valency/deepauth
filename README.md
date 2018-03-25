@@ -18,12 +18,15 @@ TEAM_NAME = 'AgileQuant'
 Customize user emails with this parameter.
 
 DEEPAUTH_EMAIL_CONF = {
-    'server': '',
-    'port':465,
-    'username': '',
-    'password': '',
-    'content':'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\n{2} Team',
+    'required': True,
+    'server': 'smtp.agilequant.io',
+    'port': 465,
+    'username': 'noreply@agilequant.io',
+    'password': '06rS1T#c$42i',
+    'subject': 'Activate Your Account',
+    'content': 'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\nAgileQuant Team',
 }
+
 ```
 
 0: name

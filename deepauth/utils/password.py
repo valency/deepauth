@@ -39,10 +39,10 @@ def auth_password(identities, password):
             try:
                 account = authenticate(username=Account.objects.get(**identity).username, password=password)
                 if account is None:
-                    auth_password(identities[1:], password)
+                    return auth_password(identities[1:], password)
                 else:
                     return account
             except ObjectDoesNotExist:
-                auth_password(identities[1:], password)
+                return  auth_password(identities[1:], password)
         else:
-            auth_password(identities[1:], password)
+            return auth_password(identities[1:], password)
