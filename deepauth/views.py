@@ -24,14 +24,14 @@ class RegisterView(APIView):
     **注册用户**
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
     - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
-    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
-    - <span class='badge'>R</span> `captcha_value` 验证码的答案
     - `username` 用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个
     - `last_name` 用户称呼（姓），不能超过 30 个字符
     - `email` 邮箱
     - `tel` 手机号码
     - `country` 国家
     - `invitation_code` 邀请码
+    - `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
+    - `captcha_value` 验证码的答案
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)
@@ -79,8 +79,8 @@ class LoginView(APIView):
     **登录**
     - <span class='badge'>R</span> `certification` 用户名或邮箱或手机号
     - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
-    - <span class='badge'>R</span> `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
-    - <span class='badge'>R</span> `captcha_value` 验证码的答案
+    - `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
+    - `captcha_value` 验证码的答案
     """
     authentication_classes = ()
     permission_classes = (AllowAny,)

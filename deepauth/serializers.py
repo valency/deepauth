@@ -46,8 +46,8 @@ class RegisterViewSerializer(serializers.Serializer):
     tel = serializers.CharField(max_length=32, required=False, default=None)
     country = serializers.CharField(max_length=8, required=False, default=None)
     invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    captcha_key = serializers.CharField(max_length=40, min_length=40)  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
 
     def validate_username(self, value):
         if value is None:
@@ -77,7 +77,8 @@ class RegisterViewSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        validate_captcha(data)
+        if getattr(settings, 'CAPTCHA_NEED', True):
+            validate_captcha(data)
         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
@@ -87,16 +88,17 @@ class RegisterViewSerializer(serializers.Serializer):
 
 
 class LoginViewSerializer(serializers.Serializer):
-    certification = serializers.CharField(max_length=150)              # 用户名或邮箱或手机号
+    certification = serializers.CharField(max_length=150) # 用户名或邮箱或手机号
     password = serializers.CharField()
-    captcha_key = serializers.CharField(max_length=40, min_length=40)  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4)  # 验证码答案
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
 
     def validate_password(self, value):
         return validate_password(value)
 
     def validate(self, data):
-        validate_captcha(data)
+        if getattr(settings, 'CAPTCHA_NEED', True):
+            validate_captcha(data)
         return data
 
 
