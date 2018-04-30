@@ -2,6 +2,10 @@ from datetime import timedelta
 
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
+from deepauth.serializers import *
+from deepauth.utils.mailbox import send_mail
+from deepauth.utils.password import change_password, auth_password
+from deepauth.utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 from django.contrib.auth import authenticate
 from ipware.ip import get_ip
 from rest_framework import status
@@ -11,11 +15,6 @@ from rest_framework.exceptions import ParseError, NotAcceptable
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from deepauth.serializers import *
-from deepauth.utils.mailbox import send_mail
-from deepauth.utils.password import change_password, auth_password
-from deepauth.utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 
 
 class RegisterView(APIView):
@@ -65,10 +64,13 @@ class RegisterView(APIView):
                 invitation_code.save()
             # 赠送邀请码
             for i in range(INVITATION_LIMIT):
-            # for i in range(getattr(settings, 'DEEPAUTH_INVITATION_ONLY', 10)):
+                # for i in range(getattr(settings, 'DEEPAUTH_INVITATION_ONLY', 10)):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
-            return Response({'id': account.id}, status=status.HTTP_201_CREATED)
+            return Response({
+                'id': account.id,
+                'username': account.username
+            }, status=status.HTTP_201_CREATED)
         else:
             raise ParseError(pp.errors)
 

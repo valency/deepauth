@@ -88,7 +88,7 @@ class RegisterViewSerializer(serializers.Serializer):
 
 
 class LoginViewSerializer(serializers.Serializer):
-    certification = serializers.CharField(max_length=150) # 用户名或邮箱或手机号
+    certification = serializers.CharField(max_length=150)  # 用户名或邮箱或手机号
     password = serializers.CharField()
     captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
     captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
