@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='deepauth',
-    version='1.4.29',
+    version='1.4.30',
     packages=['deepauth', 'deepauth.utils'],
     url='https://github.com/valency/deepauth',
     download_url='https://github.com/valency/deepauth/releases/download/v1.4.29/deepauth-1.4.29.tar.gz',
