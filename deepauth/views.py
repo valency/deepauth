@@ -68,7 +68,7 @@ class RegisterView(APIView):
             # for i in range(getattr(settings, 'DEEPAUTH_INVITATION_ONLY', 10)):
                 invitation_code = InvitationCode(account=account)
                 invitation_code.save()
-            return Response({'id': account.id}, status=status.HTTP_201_CREATED)
+            return Response({'id': account.id, 'username': account.username}, status=status.HTTP_201_CREATED)
         else:
             raise ParseError(pp.errors)
 
