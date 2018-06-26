@@ -2,9 +2,9 @@ from deeputils.serializers import *
 from django.conf import settings
 from django.utils import timezone
 
-from deepauth.models import *
-from deepauth.utils.captcha import validate_captcha
-from deepauth.utils.password import validate_password
+from .models import *
+from .utils.captcha import validate_captcha
+from .utils.password import validate_password
 
 
 # Model serializers
@@ -38,16 +38,16 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 # View serializers
 
 class RegisterViewSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=30)
-    last_name = serializers.CharField(max_length=30, required=False, default='')
-    username = serializers.CharField(max_length=150, required=False, default=None)
-    password = serializers.CharField()
-    email = serializers.EmailField(required=False, default='')
-    tel = serializers.CharField(max_length=32, required=False, default=None)
-    country = serializers.CharField(max_length=8, required=False, default=None)
-    invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
+    first_name = serializers.CharField(max_length=30, help_text='用户称呼（名），不能超过 30 个字符')
+    last_name = serializers.CharField(max_length=30, required=False, default='', help_text='用户称呼（姓），不能超过 30 个字符')
+    username = serializers.CharField(max_length=150, required=False, default=None, help_text='用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个')
+    password = serializers.CharField(help_text='密码，建议为 MD5 哈希结果')
+    email = serializers.EmailField(required=False, default='', help_text='邮箱')
+    tel = serializers.CharField(max_length=32, required=False, default=None, help_text='手机号码')
+    country = serializers.CharField(max_length=8, required=False, default=None, help_text='国家')
+    invitation_code = serializers.UUIDField(required=False, default=None, help_text='邀请码，可以不提供')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码的哈希值，建议隐藏，失效时间为 5 分钟')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码的答案')
 
     def validate_username(self, value):
         if value is None:
@@ -88,10 +88,10 @@ class RegisterViewSerializer(serializers.Serializer):
 
 
 class LoginViewSerializer(serializers.Serializer):
-    certification = serializers.CharField(max_length=150)  # 用户名或邮箱或手机号
-    password = serializers.CharField()
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
+    certification = serializers.CharField(max_length=150, help_text='用户名或邮箱或手机号')
+    password = serializers.CharField(help_text='密码，建议为 MD5 哈希结果')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码 hash key 该字段需在前端页面隐藏')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码答案')
 
     def validate_password(self, value):
         return validate_password(value)
@@ -111,9 +111,9 @@ class PasswordGetViewSerializer(serializers.Serializer):
 
 
 class PasswordPutViewSerializer(serializers.Serializer):
-    password_old = serializers.CharField()
-    password_new = serializers.CharField()
-    password_confirm = serializers.CharField()
+    password_old = serializers.CharField(help_text='当前密码')
+    password_new = serializers.CharField(help_text='新密码')
+    password_confirm = serializers.CharField(help_text='重复新密码')
 
     def validate_password_old(self, value):
         return validate_password(value)
@@ -138,6 +138,8 @@ class DetailGetViewSerializer(serializers.Serializer):
 
 
 class DetailPutViewSerializer(ModifyViewSerializer):
+    field = serializers.CharField(help_text='修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、`tel` 手机号码')
+    value = serializers.CharField(help_text='修改内容，逗号分隔，必须与 `field` 长度相同')
     def __init__(self, *args, **kwargs):
         self.model = Account
         self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel')
@@ -149,7 +151,9 @@ class AdminAccountGetViewSerializer(serializers.Serializer):
 
 
 class AdminAccountPutViewSerializer(ModifyViewSerializer):
-    id = serializers.IntegerField()
+    id = serializers.IntegerField(help_text='用户 ID')
+    field = serializers.CharField(help_text='修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、`tel` 手机号码、`password` 密码、`is_active` 是否活跃')
+    value = serializers.CharField(help_text='修改内容，逗号分隔，必须与 `field` 长度相同')
 
     def __init__(self, *args, **kwargs):
         self.model = Account
@@ -172,16 +176,16 @@ class AdminAccountPutViewSerializer(ModifyViewSerializer):
 
 
 class ActivateEmailViewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    prefix = serializers.URLField()
+    id = serializers.IntegerField(help_text='用户 id')
+    prefix = serializers.URLField(help_text='url 地址')
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
 
 
 class ValidateEmailViewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    code = serializers.UUIDField()
+    id = serializers.IntegerField(help_text='用户 ID')
+    code = serializers.UUIDField(help_text='用户的激活码')
 
     def validate_id(self, value):
         return validate_id(Account, None, value)

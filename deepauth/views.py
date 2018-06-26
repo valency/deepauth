@@ -11,29 +11,16 @@ from rest_framework.exceptions import ParseError, NotAcceptable
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
-from deepauth.serializers import *
-from deepauth.utils.mailbox import send_mail
-from deepauth.utils.password import change_password, auth_password
-from deepauth.utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
+from .serializers import *
+from .utils.mailbox import send_mail
+from .utils.password import change_password, auth_password
+from .utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 
 
 class RegisterView(RefinedViewSet):
     """
         create:
-        **注册用户**
-    
-        post:
-        **注册用户**
-        - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
-        - <span class='badge'>R</span> `first_name` 用户称呼（名），不能超过 30 个字符
-        - `username` 用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个
-        - `last_name` 用户称呼（姓），不能超过 30 个字符
-        - `email` 邮箱
-        - `tel` 手机号码
-        - `country` 国家
-        - `invitation_code` 邀请码
-        - `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
-        - `captcha_value` 验证码的答案
+        注册一个新用户
     """
 
     authentication_classes = ()
@@ -82,14 +69,7 @@ class RegisterView(RefinedViewSet):
 class LoginView(RefinedViewSet):
     """
         list:
-        **登录**
-
-        get:
-        **登录**
-        - <span class='badge'>R</span> `certification` 用户名或邮箱或手机号
-        - <span class='badge'>R</span> `password` 密码，建议为 MD5 哈希结果
-        - `captcha_key` 验证码的哈希值，建议隐藏，失效时间为 5 分钟
-        - `captcha_value` 验证码的答案
+        用户登录
     """
 
     authentication_classes = ()
@@ -123,10 +103,7 @@ class LoginView(RefinedViewSet):
 class LogoutView(RefinedViewSet):
     """
         create:
-        **登出**
-
-        post:
-        <span class='badge'><i class='fa fa-lock'></i></span> **登出**
+        登出
     """
 
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -148,15 +125,11 @@ class LogoutView(RefinedViewSet):
 
 class PasswordView(RefinedViewSet):
     """
-        get:
-        <span class='badge'><i class='fa fa-lock'></i></span> **获取用户密码修改历史**
+        list:
+        获取用户密码修改历史
 
-        put:
-        <span class='badge'><i class='fa fa-lock'></i></span> **修改密码**
-
-        - <span class='badge'>R</span> `password_old` 当前密码
-        - <span class='badge'>R</span> `password_new` 新密码
-        - <span class='badge'>R</span> `password_confirm` 重复新密码
+        update:
+        修改密码
     """
 
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -195,16 +168,11 @@ class PasswordView(RefinedViewSet):
 
 class DetailView(RefinedViewSet):
     """
-        get:
-        <span class='badge'><i class='fa fa-lock'></i></span> **获取用户信息**
+        list:
+        【需要登录】获取用户信息
 
-        put:
-        <span class='badge'><i class='fa fa-lock'></i></span> **修改用户信息**
-
-        - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、
-        `email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、
-        `country` 国家、`tel` 手机号码
-        - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
+        update:
+        【需要登录】修改用户信息
     """
 
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -248,29 +216,11 @@ class DetailView(RefinedViewSet):
 
 class AdminAccountView(RefinedViewSet):
     """
-    get:
-        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **获取全部用户信息**
+        list:
+        【需要登录】【仅限管理员】获取全部用户信息
 
-        put:
-        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **修改用户信息**
-
-        - <span class='badge'>R</span> `id` 用户 ID
-        - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、
-        `email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、
-        `tel` 手机号码、`password` 密码、`is_active` 是否活跃
-        - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
-
-        get:
-        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **获取全部用户信息**
-
-        put:
-        <span class='badge'><i class='fa fa-lock'></i></span> <span class='badge'><i class='fa fa-cog'></i></span> **修改用户信息**
-
-        - <span class='badge'>R</span> `id` 用户 ID
-        - <span class='badge'>R</span> `field` 修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、
-        `email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、
-        `tel` 手机号码、`password` 密码、`is_active` 是否活跃
-        - <span class='badge'>R</span> `value` 修改内容，逗号分隔，必须与 `field` 长度相同
+        update:
+        【需要登录】【仅限管理员】修改用户信息
     """
 
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -341,9 +291,8 @@ class AdminAccountView(RefinedViewSet):
 
 class ActivateEmailView(RefinedViewSet):
     """
-        get:
-        - <span class='badge'>R</span> `id` 用户 id ,
-        - <span class='badge'>R</span> `prefix` url 地址
+        list:
+        使用邮箱激活账户
     """
 
     authentication_classes = ()
@@ -382,9 +331,8 @@ class ActivateEmailView(RefinedViewSet):
 
 class ValidateEmailView(RefinedViewSet):
     """
-        get:
-        - <span class='badge'>R</span> `id` 用户 ID ,
-        - <span class='badge'>R</span> `code` 用户的激活码
+        list:
+        修改邮箱地址
     """
 
     authentication_classes = ()
@@ -432,10 +380,7 @@ class ValidateEmailView(RefinedViewSet):
 class CaptchaView(RefinedViewSet):
     """
         list:
-        **获取验证码**
-
-        get:
-        <span class='badge'><i class='fa fa-lock'></i></span> **获取验证码**
+        【需要登录】获取验证码
     """
 
     authentication_classes = ()
