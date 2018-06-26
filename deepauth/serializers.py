@@ -88,7 +88,7 @@ class RegisterViewSerializer(serializers.Serializer):
 
 
 class LoginViewSerializer(serializers.Serializer):
-    certification = serializers.CharField(max_length=150) # 用户名或邮箱或手机号
+    certification = serializers.CharField(max_length=150)  # 用户名或邮箱或手机号
     password = serializers.CharField()
     captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
     captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
@@ -102,7 +102,15 @@ class LoginViewSerializer(serializers.Serializer):
         return data
 
 
-class PasswordViewSerializer(serializers.Serializer):
+class LogoutViewSerializer(serializers.Serializer):
+    pass
+
+
+class PasswordGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class PasswordPutViewSerializer(serializers.Serializer):
     password_old = serializers.CharField()
     password_new = serializers.CharField()
     password_confirm = serializers.CharField()
@@ -125,14 +133,22 @@ class PasswordViewSerializer(serializers.Serializer):
             return data
 
 
-class DetailViewSerializer(ModifyViewSerializer):
+class DetailGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class DetailPutViewSerializer(ModifyViewSerializer):
     def __init__(self, *args, **kwargs):
         self.model = Account
         self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel')
         super().__init__(*args, **kwargs)
 
 
-class AdminAccountViewSerializer(ModifyViewSerializer):
+class AdminAccountGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class AdminAccountPutViewSerializer(ModifyViewSerializer):
     id = serializers.IntegerField()
 
     def __init__(self, *args, **kwargs):
@@ -169,3 +185,7 @@ class ValidateEmailViewSerializer(serializers.Serializer):
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
+
+
+class CaptchaGetViewSerializer(serializers.Serializer):
+    pass
