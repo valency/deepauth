@@ -15,12 +15,12 @@ def send_mail(host, port, username, password, receiver, subject='Test', content=
     :param port: 端口号
     :return: 邮件发送情况，详情请参考 smtp.sendmail()
     """
-    msg = MIMEText(content, 'plain', 'utf-8')  # 邮件内容
-    msg['Subject'] = Header(subject, 'utf-8')  # 邮件主题
-    msg['From'] = username  # 发送者账号
-    msg['To'] = receiver  # 接收者账号
-    smtp = smtplib.SMTP_SSL(host, port=port)  # 连接邮箱，传入邮箱地址，和端口号
-    smtp.login(username, password)  # 发送者的邮箱账号，密码
-    resp = smtp.sendmail(username, receiver, msg.as_string())  # 参数分别是发送者，接收者，第三个是把上面的发送邮件的内容变成字符串
-    smtp.quit()  # 发送完毕后退出 smtp
+    msg = MIMEText(content, 'plain', 'utf-8')
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg['From'] = username
+    msg['To'] = receiver
+    smtp = smtplib.SMTP_SSL(host, port=port)
+    smtp.login(username, password)
+    resp = smtp.sendmail(username, receiver, msg.as_string())
+    smtp.quit()
     return resp

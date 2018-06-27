@@ -1,48 +1,51 @@
 # Deepera Authentication System
-To use captcha, install the following items:
-- apt-get -y install libz-dev libjpeg-dev libfreetype6-dev python-dev
-
-To install, add the following items to your Django settings:
-- `deepauth` to `INSTALLED_APPS`
-- `captcha` to `INSTALLED_APPS`
-- `AUTH_USER_MODEL = 'deepauth.Account'`
-
+To use captcha, install the following packages:
+```sh
+sudo apt install libz-dev libjpeg-dev libfreetype6-dev python-dev
 ```
-DEEPAUTH_INVITATION_ONLY = True
-Invatitation code must be provided if set to true.
 
-DEEPAUTH_AUTO_LOGIN = True
-User will auto login in when verify success if set to true.
 
-TEAM_NAME = 'AgileQuant'
-Customize user emails with this parameter.
+To install, add `deepauth` and `captcha` to `INSTALLED_APPS`  in your Django settings.
 
+Compulsory configurations:
+
+```python
+AUTH_USER_MODEL = 'deepauth.Account'
 DEEPAUTH_EMAIL_CONF = {
     'required': True,
-    'server': 'smtp.agilequant.io',
+    'server': 'smtp.example.com',
     'port': 465,
-    'username': 'noreply@agilequant.io',
-    'password': '06rS1T#c$42i',
+    'username': 'noreply@example.com',
+    'password': 'moc.elpmaxe',
     'subject': 'Activate Your Account',
-    'content': 'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\nAgileQuant Team',
+    'content': 'Dear {0},\nPlease verify your account by clicking the following link:\n{1}\nYours sincerely,\nExample.com',
 }
-
 ```
 
-0: name
-1: link
+Optional configurations:
 
-To enable access, add the following code to your url patterns:
+```python
+DEEPAUTH_INVITATION_ONLY = False
+# Invatitation code must be provided if set to true.
+
+DEEPAUTH_AUTO_LOGIN = False
+# User will be logged in after certain actions (currently only work for updating email).
+
+TOKEN_LIFETIME = 7
+# Token will be expired after certain days.
 ```
-url(r'auth/', include('deepauth.urls'))
+
+To enable access, add the following URLs to your URL patterns:
+```python
+url(r'^auth/', include('deepauth.urls')),
 url(r'^captcha/', include('captcha.urls'))
 ```
 
-To show docs, add the following code to your urls:
-```
+To show docs, add the following code to your URLs:
+```python
 from rest_framework.documentation import include_docs_urls
 urlpatterns = [
-    url(r'docs/', include_docs_urls('API Docs'))
+    url(r'^docs/', include_docs_urls('API Docs'))
 ]
 ```
 

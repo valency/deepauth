@@ -2,9 +2,9 @@ from deeputils.serializers import *
 from django.conf import settings
 from django.utils import timezone
 
-from deepauth.models import *
-from deepauth.utils.captcha import validate_captcha
-from deepauth.utils.password import validate_password
+from .models import *
+from .utils.captcha import validate_captcha
+from .utils.password import validate_password
 
 
 # Model serializers
@@ -38,16 +38,16 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 # View serializers
 
 class RegisterViewSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=30)
-    last_name = serializers.CharField(max_length=30, required=False, default='')
-    username = serializers.CharField(max_length=150, required=False, default=None)
-    password = serializers.CharField()
-    email = serializers.EmailField(required=False, default='')
-    tel = serializers.CharField(max_length=32, required=False, default=None)
-    country = serializers.CharField(max_length=8, required=False, default=None)
-    invitation_code = serializers.UUIDField(required=False, default=None)  # 邀请码，可以不提供
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
+    first_name = serializers.CharField(max_length=30, help_text='First name of the user, maximum: 30 bytes')
+    last_name = serializers.CharField(max_length=30, required=False, default='', help_text='Last name of the user, maximum: 30 bytes')
+    username = serializers.CharField(max_length=150, required=False, default=None, help_text='User name, will be randomly generated if not provided, maximum: 150 bytes')
+    password = serializers.CharField(help_text='Password, hashed via MD5 is recommended')
+    email = serializers.EmailField(required=False, default='', help_text='Email')
+    tel = serializers.CharField(max_length=32, required=False, default=None, help_text='Telephone number')
+    country = serializers.CharField(max_length=8, required=False, default=None, help_text='Country code, maximum: 8 bytes')
+    invitation_code = serializers.UUIDField(required=False, default=None, help_text='Invitation code')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha key (should hide from user), expires in 5 minutes')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha value provided by user')
 
     def validate_username(self, value):
         if value is None:
@@ -80,7 +80,6 @@ class RegisterViewSerializer(serializers.Serializer):
         if getattr(settings, 'CAPTCHA_NEED', True):
             validate_captcha(data)
         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
-            # 需要邀请码
             raise serializers.ValidationError('Invitation code is required.')
         if getattr(settings, 'DEEPAUTH_EMAIL_CONF', False) and settings.DEEPAUTH_EMAIL_CONF['required'] is True and data['email'] is None:
             raise serializers.ValidationError('Email is required.')
@@ -88,10 +87,10 @@ class RegisterViewSerializer(serializers.Serializer):
 
 
 class LoginViewSerializer(serializers.Serializer):
-    certification = serializers.CharField(max_length=150)  # 用户名或邮箱或手机号
-    password = serializers.CharField()
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码 hash key 该字段需在前端页面隐藏
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True))  # 验证码答案
+    certification = serializers.CharField(max_length=150, help_text='User name or email or telephone')
+    password = serializers.CharField(help_text='Password, hashed via MD5 is recommended')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha key (should hide from user), expires in 5 minutes')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha value provided by user')
 
     def validate_password(self, value):
         return validate_password(value)
@@ -102,10 +101,18 @@ class LoginViewSerializer(serializers.Serializer):
         return data
 
 
-class PasswordViewSerializer(serializers.Serializer):
-    password_old = serializers.CharField()
-    password_new = serializers.CharField()
-    password_confirm = serializers.CharField()
+class LogoutViewSerializer(serializers.Serializer):
+    pass
+
+
+class PasswordGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class PasswordPutViewSerializer(serializers.Serializer):
+    password_old = serializers.CharField(help_text='Current password')
+    password_new = serializers.CharField(help_text='New password')
+    password_confirm = serializers.CharField(help_text='Repeat new password')
 
     def validate_password_old(self, value):
         return validate_password(value)
@@ -125,15 +132,23 @@ class PasswordViewSerializer(serializers.Serializer):
             return data
 
 
-class DetailViewSerializer(ModifyViewSerializer):
+class DetailGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class DetailPutViewSerializer(ModifyViewSerializer):
     def __init__(self, *args, **kwargs):
         self.model = Account
         self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel')
         super().__init__(*args, **kwargs)
 
 
-class AdminAccountViewSerializer(ModifyViewSerializer):
-    id = serializers.IntegerField()
+class AdminAccountGetViewSerializer(serializers.Serializer):
+    pass
+
+
+class AdminAccountPutViewSerializer(ModifyViewSerializer):
+    id = serializers.IntegerField(help_text='Account ID')
 
     def __init__(self, *args, **kwargs):
         self.model = Account
@@ -156,16 +171,20 @@ class AdminAccountViewSerializer(ModifyViewSerializer):
 
 
 class ActivateEmailViewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    prefix = serializers.URLField()
+    id = serializers.IntegerField(help_text='Account ID')
+    prefix = serializers.URLField(help_text='Callback URL, e.g., a link "http://example.org/?code=a&id=1" will be generated when set to "http://example.org/"')
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
 
 
 class ValidateEmailViewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    code = serializers.UUIDField()
+    id = serializers.IntegerField(help_text='Account ID')
+    code = serializers.UUIDField(help_text='The generated activation code')
 
     def validate_id(self, value):
         return validate_id(Account, None, value)
+
+
+class CaptchaGetViewSerializer(serializers.Serializer):
+    pass

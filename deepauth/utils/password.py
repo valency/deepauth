@@ -43,6 +43,6 @@ def auth_password(identities, password):
                 else:
                     return account
             except ObjectDoesNotExist:
-                return  auth_password(identities[1:], password)
+                return auth_password(identities[1:], password)
         else:
             return auth_password(identities[1:], password)
