@@ -21,7 +21,14 @@ from .utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 class RegisterView(RefinedViewSet):
     """
         create:
-        Register a new account.
+        Register a new account. Returns:
+
+        ```json
+        {
+            "id": 13,
+            "username": "eva"
+        }
+        ```
     """
 
     authentication_classes = ()
@@ -70,7 +77,14 @@ class RegisterView(RefinedViewSet):
 class LoginView(RefinedViewSet):
     """
         list:
-        Log in.
+        Log in. Returns:
+
+        ```json
+        {
+            "id": 13,
+            "token": "618639977ca9ee3dc13adb528386ee79f7ef35ac"
+        }
+        ```
     """
 
     authentication_classes = ()
@@ -119,7 +133,6 @@ class LogoutView(RefinedViewSet):
         if pp.is_valid():
             request.user.auth_token.delete()
             return Response()
-
         else:
             raise ParseError(pp.errors)
 
@@ -127,10 +140,22 @@ class LogoutView(RefinedViewSet):
 class PasswordView(RefinedViewSet):
     """
         list:
-        Retrieve password history.
+        Retrieve password history. Returns:
+
+        ```json
+        [
+            {
+                "id": 13,
+                "t": "2018-06-27T07:20:34.733891Z",
+                "ip": "192.168.1.129",
+                "password": "pbkdf2_sha256$100000$1uV5KjDca2sF$Hh/19HvjlfdcBvOMg/OWPutQlnRJ2Wjw8otXz+xCWAg=",
+                "account": 13
+            }
+        ]
+        ```
 
         update:
-        Change password.
+        Change password. Returns 202 if successful.
     """
 
     authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
@@ -171,7 +196,48 @@ class DetailView(RefinedViewSet):
     """
         list:
         <span class='badge'><i class='fa fa-lock'></i></span>
-        Get account details.
+        Get account details. Returns:
+
+        ```json
+        {
+            "id": 13,
+            "last_login": null,
+            "is_superuser": false,
+            "username": "eva",
+            "first_name": "eva",
+            "last_name": "",
+            "email": "",
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2018-06-27T07:20:34.623735Z",
+            "avatar": null,
+            "country": null,
+            "tel": null,
+            "unique_auth": true,
+            "verified_email": false,
+            "verified_tel": false,
+            "verification_email_code": null,
+            "verification_email_t": null,
+            "groups": [],
+            "user_permissions": [],
+            "access_log": [
+                {
+                    "id": 14,
+                    "t": "2018-06-27T07:21:27.486975Z",
+                    "ip": "192.168.1.129",
+                    "token": "618639977ca9ee3dc13adb528386ee79f7ef35ac",
+                    "account": 13
+                }
+            ],
+            "invitation_code": [
+                {
+                    "id": "15665b7a-dfdd-440d-8777-b69b59567988",
+                    "account": 13,
+                    "user": null
+                }
+            ]
+        }
+        ```
 
         update:
         <span class='badge'><i class='fa fa-lock'></i></span>
@@ -222,7 +288,34 @@ class AdminAccountView(RefinedViewSet):
         list:
         <span class='badge'><i class='fa fa-lock'></i></span>
         <span class='badge'><i class='fa fa-cog'></i></span>
-        Retrieve the details of all accounts.
+        Retrieve the details of all accounts. Returns:
+
+        ```json
+        [
+            {
+                "id": 1,
+                "last_login": null,
+                "is_superuser": true,
+                "username": "u1529547733083",
+                "first_name": "用户",
+                "last_name": "",
+                "email": "",
+                "is_staff": true,
+                "is_active": true,
+                "date_joined": "2018-06-21T02:22:13.086712Z",
+                "avatar": null,
+                "country": null,
+                "tel": null,
+                "unique_auth": true,
+                "verified_email": false,
+                "verified_tel": false,
+                "verification_email_code": null,
+                "verification_email_t": null,
+                "groups": [],
+                "user_permissions": []
+            }
+        ]
+        ```
 
         update:
         <span class='badge'><i class='fa fa-lock'></i></span>
@@ -299,7 +392,7 @@ class AdminAccountView(RefinedViewSet):
 class ActivateEmailView(RefinedViewSet):
     """
         list:
-        Activate email.
+        Activate email. Returns 200 if successful.
     """
 
     authentication_classes = ()
@@ -339,7 +432,7 @@ class ActivateEmailView(RefinedViewSet):
 class ValidateEmailView(RefinedViewSet):
     """
         list:
-        Update email.
+        Update email. Returns 202 if successful.
     """
 
     authentication_classes = ()
@@ -388,7 +481,14 @@ class CaptchaView(RefinedViewSet):
     """
         list:
         <span class='badge'><i class='fa fa-lock'></i></span>
-        Generate and get a captcha.
+        Generate and get a captcha. Returns:
+
+        ```json
+        {
+            "key": "da8fa92734b779bcb6d2cac4b96b83cf002e07cf",
+            "url": "/captcha/image/da8fa92734b779bcb6d2cac4b96b83cf002e07cf/"
+        }
+        ```
     """
 
     authentication_classes = ()
