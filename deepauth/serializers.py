@@ -140,6 +140,7 @@ class DetailGetViewSerializer(serializers.Serializer):
 class DetailPutViewSerializer(ModifyViewSerializer):
     field = serializers.CharField(help_text='修改键值，逗号分隔：`unique_auth` 是否仅限单一客户端登录、`email` 邮箱、`last_name` 用户称呼（姓）、`first_name` 用户称呼（名）、`avatar` 用户头像、`country` 国家、`tel` 手机号码')
     value = serializers.CharField(help_text='修改内容，逗号分隔，必须与 `field` 长度相同')
+
     def __init__(self, *args, **kwargs):
         self.model = Account
         self.allowed_fields = ('unique_auth', 'email', 'first_name', 'last_name', 'avatar', 'country', 'tel')

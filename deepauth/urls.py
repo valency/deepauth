@@ -22,8 +22,7 @@ urlpatterns = [
         'put': 'update'
     })),
     url(r'captcha/$', CaptchaView.as_view({
-        'get': 'list',
-        'put': 'update'
+        'get': 'list'
     })),
     url(r'email/activate/$', ActivateEmailView.as_view({
         'get': 'list'
@@ -33,7 +32,8 @@ urlpatterns = [
     })),
     # ------- Multiple User Management (Admin Only) -------
     url(r'admin/account/$', AdminAccountView.as_view({
-        'get': 'list'
+        'get': 'list',
+        'post': 'update'
     })),
     # url(r'admin/account/tree/$', AdminAccountTreeView.as_view()),
 ]

@@ -17,6 +17,9 @@ User will auto login in when verify success if set to true.
 TEAM_NAME = 'AgileQuant'
 Customize user emails with this parameter.
 
+TOKEN_LIFETIME = 7
+Set token expired time in django.settings.py, default 7 days if not set, token will not expired if set None.
+
 DEEPAUTH_EMAIL_CONF = {
     'required': True,
     'server': 'smtp.agilequant.io',
