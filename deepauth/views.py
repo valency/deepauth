@@ -297,7 +297,7 @@ class AdminAccountView(RefinedViewSet):
                 "last_login": null,
                 "is_superuser": true,
                 "username": "u1529547733083",
-                "first_name": "用户",
+                "first_name": "user",
                 "last_name": "",
                 "email": "",
                 "is_staff": true,
