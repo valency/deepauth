@@ -40,14 +40,14 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 class RegisterViewSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=30, help_text='用户称呼（名），不能超过 30 个字符')
     last_name = serializers.CharField(max_length=30, required=False, default='', help_text='用户称呼（姓），不能超过 30 个字符')
-    username = serializers.CharField(max_length=150, required=False, default=None, help_text='用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个')
+    username = serializers.CharField(max_length=150, required=getattr(settings, 'USERNAME_NEED', False), default=None, help_text='用户名，不能超过 150 个字符，如不提供则会依照当前时间生成一个')
     password = serializers.CharField(help_text='密码，建议为 MD5 哈希结果')
-    email = serializers.EmailField(required=False, default='', help_text='邮箱')
-    tel = serializers.CharField(max_length=32, required=False, default=None, help_text='手机号码')
+    email = serializers.EmailField(required=getattr(settings, 'EMAIL_NEED', False), default='', help_text='邮箱')
+    tel = serializers.CharField(max_length=32, required=getattr(settings, 'PHONE_NEED', False), default=None, help_text='手机号码')
     country = serializers.CharField(max_length=8, required=False, default=None, help_text='国家')
     invitation_code = serializers.UUIDField(required=False, default=None, help_text='邀请码，可以不提供')
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码的哈希值，建议隐藏，失效时间为 5 分钟')
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码的答案')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='验证码的哈希值，建议隐藏，失效时间为 5 分钟')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='验证码的答案')
 
     def validate_username(self, value):
         if value is None:
@@ -77,7 +77,7 @@ class RegisterViewSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        if getattr(settings, 'CAPTCHA_NEED', True):
+        if getattr(settings, 'CAPTCHA_NEED', False):
             validate_captcha(data)
         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
             # 需要邀请码
@@ -90,14 +90,14 @@ class RegisterViewSerializer(serializers.Serializer):
 class LoginViewSerializer(serializers.Serializer):
     certification = serializers.CharField(max_length=150, help_text='用户名或邮箱或手机号')
     password = serializers.CharField(help_text='密码，建议为 MD5 哈希结果')
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码 hash key 该字段需在前端页面隐藏')
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='验证码答案')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='验证码 hash key 该字段需在前端页面隐藏')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='验证码答案')
 
     def validate_password(self, value):
         return validate_password(value)
 
     def validate(self, data):
-        if getattr(settings, 'CAPTCHA_NEED', True):
+        if getattr(settings, 'CAPTCHA_NEED', False):
             validate_captcha(data)
         return data
 

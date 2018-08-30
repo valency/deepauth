@@ -20,6 +20,18 @@ Customize user emails with this parameter.
 TOKEN_LIFETIME = 7
 Set token expired time in django.settings.py, default 7 days if not set, token will not expired if set None.
 
+USERNAME_NEED = False
+Set whether username is needed when register in django.settings.py, default False.
+
+EMAIL_NEED = False
+Set whether email is needed when register in django.settings.py, default False.
+
+PHONE_NEED = False
+Set whether phone is needed when register in django.settings.py, default False.
+
+CAPTCHA_NEED = False
+Set whether captcha is needed when register and login in django.settings.py, default False.
+
 DEEPAUTH_EMAIL_CONF = {
     'required': True,
     'server': 'smtp.agilequant.io',
