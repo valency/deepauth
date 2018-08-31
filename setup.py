@@ -1,19 +1,27 @@
-from distutils.core import setup
+from os import path
+
+from setuptools import setup, find_packages
+
+with open(path.join(path.abspath(path.dirname(__file__)), 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='deepauth',
-    version='1.6.28',
-    packages=['deepauth', 'deepauth.utils'],
-    url='https://github.com/valency/deepauth',
-    license='CPL-3.0',
+    version='1.8.31',
+    packages=find_packages(),
+    include_package_data=True,
+    url='https://github.com/valency/deepauth/',
     author='Deepera Co., Ltd.',
     author_email='yding@deepera.com',
     description='Deepera Authentication System',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    keywords=['tokenetf', 'tokenmds', 'mds'],
     install_requires=[
         'django',
         'django-ipware',
         'djangorestframework',
         'django-simple-captcha',
         'deeputils'
-    ],
+    ]
 )
