@@ -46,8 +46,8 @@ class RegisterViewSerializer(serializers.Serializer):
     tel = serializers.CharField(max_length=32, required=False, default=None, help_text='Telephone number')
     country = serializers.CharField(max_length=8, required=False, default=None, help_text='Country code, maximum: 8 bytes')
     invitation_code = serializers.UUIDField(required=False, default=None, help_text='Invitation code')
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha key (should hide from user), expires in 5 minutes')
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha value provided by user')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='Captcha key (should hide from user), expires in 5 minutes')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='Captcha value provided by user')
 
     def validate_username(self, value):
         if value is None:
@@ -89,8 +89,8 @@ class RegisterViewSerializer(serializers.Serializer):
 class LoginViewSerializer(serializers.Serializer):
     certification = serializers.CharField(max_length=150, help_text='User name or email or telephone')
     password = serializers.CharField(help_text='Password, hashed via MD5 is recommended')
-    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha key (should hide from user), expires in 5 minutes')
-    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', True), help_text='Captcha value provided by user')
+    captcha_key = serializers.CharField(max_length=40, min_length=40, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='Captcha key (should hide from user), expires in 5 minutes')
+    captcha_value = serializers.CharField(max_length=4, min_length=4, required=getattr(settings, 'CAPTCHA_NEED', False), help_text='Captcha value provided by user')
 
     def validate_password(self, value):
         return validate_password(value)
