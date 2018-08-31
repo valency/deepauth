@@ -77,7 +77,7 @@ class RegisterViewSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        if getattr(settings, 'CAPTCHA_NEED', True):
+        if getattr(settings, 'CAPTCHA_NEED', False):
             validate_captcha(data)
         if getattr(settings, 'DEEPAUTH_INVITATION_ONLY', False) and data['invitation_code'] is None and Account.objects.all().count():
             raise serializers.ValidationError('Invitation code is required.')
@@ -96,7 +96,7 @@ class LoginViewSerializer(serializers.Serializer):
         return validate_password(value)
 
     def validate(self, data):
-        if getattr(settings, 'CAPTCHA_NEED', True):
+        if getattr(settings, 'CAPTCHA_NEED', False):
             validate_captcha(data)
         return data
 
