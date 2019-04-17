@@ -1,4 +1,4 @@
 # Deepauth - Deepera Authentication System
 # -------------------------------------
-# (C) 2015 - 2018 Deepera Co., Ltd.
-# http://open.deepera.com
+# (C) 2015 - 2019 Deepera Co., Ltd.
+# https://github.com/valency/deepauth/

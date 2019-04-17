@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from deeputils.schemas import RefinedViewSet
+from deeputils.django.schemas import RefinedViewSet
 from django.contrib.auth import authenticate
 from ipware.ip import get_ip
 from rest_framework import status

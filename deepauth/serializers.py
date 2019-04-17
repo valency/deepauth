@@ -1,4 +1,4 @@
-from deeputils.serializers import *
+from deeputils.django.serializers import *
 from django.conf import settings
 from django.utils import timezone
 
