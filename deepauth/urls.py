@@ -3,37 +3,35 @@ from django.conf.urls import url
 from .views import *
 
 urlpatterns = [
-    # ------- Single User Management -------
+    # Public
     url(r'register/$', RegisterView.as_view({
-        'post': 'create'
+        'post': 'create',
     })),
-    url(r'login/$', LoginView.as_view({
-        'get': 'list'
-    })),
-    url(r'logout/$', LogoutView.as_view({
-        'post': 'create'
-    })),
-    url(r'password/$', PasswordView.as_view({
-        'get': 'list',
-        'put': 'update'
-    })),
-    url(r'detail/$', DetailView.as_view({
-        'get': 'list',
-        'put': 'update'
+    url(r'login/$', LogInView.as_view({
+        'post': 'create',
     })),
     url(r'captcha/$', CaptchaView.as_view({
         'get': 'list'
     })),
-    url(r'email/activate/$', ActivateEmailView.as_view({
-        'get': 'list'
+    # Private
+    url(r'account/$', AccountView.as_view({
+        'get': 'list',
+        'put': 'update'
     })),
-    url(r'email/validate/$', ValidateEmailView.as_view({
-        'get': 'list'
+    url(r'access/$', AccessView.as_view({
+        'get': 'list',
+        'delete': 'destroy'
     })),
-    # ------- Multiple User Management (Admin Only) -------
+    url(r'password/$', PasswordView.as_view({
+        'put': 'update'
+    })),
+    url(r'verify/email/$', EmailVerificationView.as_view({
+        'post': 'create',
+        'put': 'update'
+    })),
+    # Admin
     url(r'admin/account/$', AdminAccountView.as_view({
         'get': 'list',
-        'post': 'update'
+        'put': 'update'
     })),
-    # url(r'admin/account/tree/$', AdminAccountTreeView.as_view()),
 ]

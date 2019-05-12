@@ -8,7 +8,7 @@ To use captcha, install the following packages:
 
     sudo apt install libz-dev libjpeg-dev libfreetype6-dev python-dev
 
-To install, add `deepauth` and `captcha` to `INSTALLED_APPS`  in your Django settings.
+To install, add ``deepauth`` and ``captcha`` to ``INSTALLED_APPS``  in your Django settings.
 
 Compulsory configurations:
 
@@ -30,14 +30,14 @@ Optional configurations:
 
 .. code:: python
 
+    DEEPAUTH_CAPTCHA_NEED = False
+    # Whether captcha is required to register or login
+
     DEEPAUTH_INVITATION_ONLY = False
-    # Invatitation code must be provided if set to true.
+    # Invatitation code must be provided if set to true
 
-    DEEPAUTH_AUTO_LOGIN = False
-    # User will be logged in after certain actions (currently only work for updating email).
-
-    TOKEN_LIFETIME = 7
-    # Token will be expired after certain days.
+    DEEPAUTH_TOKEN_LIFETIME = 7
+    # Token will expire in certain days
 
 To enable access, add the following URLs to your URL patterns:
 

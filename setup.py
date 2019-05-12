@@ -7,7 +7,7 @@ with open(path.join(path.abspath(path.dirname(__file__)), 'README.rst'), encodin
 
 setup(
     name='deepauth',
-    version='2.4.17',
+    version='2.5.12x',
     packages=find_packages(),
     include_package_data=True,
     url='https://github.com/valency/deepauth/',

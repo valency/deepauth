@@ -1,8 +1,8 @@
 from datetime import timedelta
 
+import coreapi
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
-from deeputils.django.schemas import RefinedViewSet
 from django.contrib.auth import authenticate
 from ipware.ip import get_ip
 from rest_framework import status
@@ -11,11 +11,51 @@ from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ParseError, NotAcceptable
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.schemas import AutoSchema
+from rest_framework.schemas.inspectors import field_to_schema
+from rest_framework.viewsets import GenericViewSet
 
 from .serializers import *
 from .utils.mailbox import send_mail
 from .utils.password import change_password, auth_password
 from .utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
+
+
+class RefinedViewSchema(AutoSchema):
+    def get_fields(self, method):
+        fields = []
+        for field in self.view.get_serializer().fields.values():
+            if not field.read_only and not isinstance(field, serializers.HiddenField):
+                fields.append(coreapi.Field(
+                    name=field.field_name,
+                    location='form',
+                    required=field.required and method != 'PATCH',
+                    schema=field_to_schema(field)
+                ))
+        return fields
+
+    def get_link(self, path, method, base_url):
+        link = super().get_link(path, method, base_url)
+        if method == 'GET':
+            link._fields = tuple(self.get_fields(method))
+            link._encoding = 'path'
+        elif method == 'DELETE':
+            link._fields = tuple(self.get_fields(method))
+            link._encoding = 'application/json'
+        return link
+
+
+class RefinedViewSet(GenericViewSet):
+    schema = RefinedViewSchema()
+    serializer_classes = {
+        'list': None,
+        'create': None,
+        'update': None,
+        'destroy': None
+    }
+
+    def get_serializer_class(self):
+        return self.serializer_classes[self.action]
 
 
 class RegisterView(RefinedViewSet):
@@ -33,48 +73,41 @@ class RegisterView(RefinedViewSet):
 
     authentication_classes = ()
     permission_classes = (AllowAny,)
-
     serializer_classes = {
         'create': RegisterViewSerializer,
     }
 
     def create(self, request):
         pp = self.get_serializer(data=request.data)
-        if pp.is_valid():
-            first_name = pp.validated_data['first_name']
-            last_name = pp.validated_data['last_name']
-            username = pp.validated_data['username']
-            password = pp.validated_data['password']
-            email = pp.validated_data['email']
-            tel = pp.validated_data['tel']
-            country = pp.validated_data['country']
-            invitation_code = pp.validated_data['invitation_code']
-            # Create user
-            conf = dict(username=username, password=password, first_name=first_name, last_name=last_name, email=email, tel=tel, country=country)
-            if Account.objects.count():
-                account = Account.objects.create_user(**conf)
-            else:
-                account = Account.objects.create_superuser(**conf)
-            account.save()
-            # Update password log
-            password_log = PasswordLog(account=account, ip=get_ip(request), password=account.password)
-            password_log.save()
-            if invitation_code:
-                # 用户注册完后, 邀请码失效
-                invitation_code = InvitationCode.objects.get(id=invitation_code, user=None)
-                invitation_code.user = account
-                invitation_code.save()
-            # 赠送邀请码
-            for i in range(INVITATION_LIMIT):
-                # for i in range(getattr(settings, 'DEEPAUTH_INVITATION_ONLY', 10)):
-                invitation_code = InvitationCode(account=account)
-                invitation_code.save()
-            return Response({'id': account.id, 'username': account.username}, status=status.HTTP_201_CREATED)
+        pp.is_valid(raise_exception=True)
+        first_name = pp.validated_data['first_name']
+        last_name = pp.validated_data['last_name']
+        username = pp.validated_data['username']
+        password = pp.validated_data['password']
+        email = pp.validated_data['email']
+        tel = pp.validated_data['tel']
+        country = pp.validated_data['country']
+        invitation = pp.validated_data['invitation']
+        # Create user
+        kwargs = dict(username=username, password=password, first_name=first_name, last_name=last_name, email=email, tel=tel, country=country)
+        if Account.objects.count():
+            account = Account.objects.create_user(**kwargs)
         else:
-            raise ParseError(pp.errors)
+            account = Account.objects.create_superuser(**kwargs)
+        account.save()
+        # Update password log
+        Password(account=account, ip=get_ip(request), password=account.password).save()
+        # Invitation code
+        if invitation:
+            invitation = Invitation(account=Account.objects.get(invitation_code=invitation), user=account)
+            invitation.save()
+        return Response({
+            'id': account.id,
+            'username': account.username
+        }, status=status.HTTP_201_CREATED)
 
 
-class LoginView(RefinedViewSet):
+class LogInView(RefinedViewSet):
     """
         list:
         Log in. Returns:
@@ -229,7 +262,7 @@ class DetailView(RefinedViewSet):
                     "account": 13
                 }
             ],
-            "invitation_code": [
+            "invitation": [
                 {
                     "id": "15665b7a-dfdd-440d-8777-b69b59567988",
                     "account": 13,
@@ -258,7 +291,7 @@ class DetailView(RefinedViewSet):
             account = Account.objects.get(pk=request.user.pk)
             resp = AccountSerializer(account).data
             resp['access_log'] = AccessLogSerializer(AccessLog.objects.filter(account=account)[:10], many=True).data
-            resp['invitation_code'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account, user=None), many=True).data
+            resp['invitation'] = InvitationCodeSerializer(InvitationCode.objects.filter(account=account, user=None), many=True).data
             return Response(resp)
         else:
             raise ParseError(pp.errors)
@@ -377,13 +410,13 @@ class AdminAccountView(RefinedViewSet):
 #         pp = self.serializer_class(data=request.GET)
 #         if pp.is_valid():
 #             account = Account.objects.get(pk=pp.validated_data['id'])
-#             invitation_code = InvitationCode.objects.get(user=account)
+#             invitation = InvitationCode.objects.get(user=account)
 #             account_list = [account]
-#             while invitation_code.account.id != 1:
-#                 account = invitation_code.account
+#             while invitation.account.id != 1:
+#                 account = invitation.account
 #                 account_list.append(account)
-#                 invitation_code = InvitationCode.objects.get(user=account)
-#             account_list.append(invitation_code.account)
+#                 invitation = InvitationCode.objects.get(user=account)
+#             account_list.append(invitation.account)
 #             return Response(AccountSerializer(account_list, many=True).data)
 #         else:
 #             raise ParseError(pp.errors)
