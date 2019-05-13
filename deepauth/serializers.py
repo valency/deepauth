@@ -27,11 +27,9 @@ def validate_id(model, account, oid, allow_none=True):
 # Model serializers
 
 class AccountSerializer(serializers.ModelSerializer):
-    password = serializers.HiddenField(default=None)
-
     class Meta:
         model = Account
-        fields = '__all__'
+        exclude = ('password',)
 
 
 class AccessSerializer(serializers.ModelSerializer):

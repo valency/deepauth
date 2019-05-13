@@ -22,6 +22,7 @@ setup(
         'django-ipware',
         'djangorestframework',
         'django-simple-captcha',
-        'deeputils'
+        'deeputils',
+        'coreapi'
     ]
 )
