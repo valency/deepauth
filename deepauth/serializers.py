@@ -2,26 +2,11 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound, NotAuthenticated
+from rest_framework.exceptions import NotFound
 
 from .models import *
-from .utils.captcha import validate_captcha
 from .utils.password import validate_password
-
-
-def validate_id(model, account, oid, allow_none=True):
-    if oid is not None:
-        try:
-            obj = model.objects.get(pk=oid)
-            if getattr(model, 'public', False) and obj.public is True:
-                pass
-            elif account is not None and obj.account != account:
-                raise serializers.ValidationError(NotAuthenticated.default_detail)
-        except ObjectDoesNotExist:
-            raise serializers.ValidationError(NotFound.default_detail)
-    elif not allow_none:
-        raise serializers.ValidationError(NotFound.default_detail)
-    return oid
+from .utils.serializers import validate_captcha
 
 
 # Model serializers

@@ -1,30 +1,10 @@
 from django.contrib.auth import authenticate
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import serializers
 
 from deepauth.models import Account
 
-EMPTY_MD5 = 'd41d8cd98f00b204e9800998ecf8427e'
 
-
-def validate_password(value):
-    value = value.lower()
-    if value == EMPTY_MD5:
-        raise serializers.ValidationError('This field may not be empty encryption value.')
-    else:
-        return value
-
-
-def change_password(account, password):
-    account.set_password(password)
-    account.save()
-    try:
-        account.auth_token.delete()
-    except Account.auth_token.RelatedObjectDoesNotExist:
-        pass
-
-
-def auth_password(identities, password):
+def auth_password(identities: list, password):
     """
     Authentication using password
     :param identities: An array containing dictionaries with identity field and value, e.g., [{'username':'u001'}]

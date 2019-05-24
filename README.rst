@@ -43,8 +43,8 @@ To enable access, add the following URLs to your URL patterns:
 
 .. code:: python
 
-    url(r'^auth/', include('deepauth.urls')),
-    url(r'^captcha/', include('captcha.urls'))
+    path(r'^auth/', include('deepauth.urls')),
+    path(r'^captcha/', include('captcha.urls'))
 
 
 To show docs, add the following code to your URLs:
@@ -53,7 +53,7 @@ To show docs, add the following code to your URLs:
 
     from rest_framework.documentation import include_docs_urls
     urlpatterns = [
-        url(r'^docs/', include_docs_urls('API Docs'))
+        path(r'^docs/', include_docs_urls('API Docs'))
     ]
 
 

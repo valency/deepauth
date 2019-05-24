@@ -191,7 +191,7 @@ class PasswordView(RefinedViewSet):
         Change password. Returns 202 if successful.
     """
 
-    authentication_classes = (ExpiringTokenAuthentication, BasicAuthentication)
+    authentication_classes = (ExpiringTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
     serializer_classes = {
@@ -215,7 +215,8 @@ class PasswordView(RefinedViewSet):
             password_new = pp.validated_data['password_new']
             account = authenticate(username=username, password=password_old)
             if account is not None:
-                change_password(account, password_new)
+                account.set_password(password_new)
+                account.save()
                 password_log = PasswordLog(account=account, ip=get_ip(request), password=account.password)
                 password_log.save()
                 return Response(status=status.HTTP_202_ACCEPTED)
