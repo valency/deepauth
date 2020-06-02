@@ -8,16 +8,16 @@ from ipware.ip import get_ip
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.exceptions import ParseError, NotAcceptable
+from rest_framework.exceptions import ParseError, NotAcceptable, NotAuthenticated
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.schemas import AutoSchema
-from rest_framework.schemas.inspectors import field_to_schema
+from rest_framework.schemas.coreapi import field_to_schema
 from rest_framework.viewsets import GenericViewSet
 
 from .serializers import *
 from .utils.mailbox import send_mail
-from .utils.password import change_password, auth_password
+from .utils.views import auth_password
 from .utils.token import TOKEN_LIFETIME, ExpiringTokenAuthentication
 
 
@@ -124,7 +124,7 @@ class LogInView(RefinedViewSet):
     permission_classes = (AllowAny,)
 
     serializer_classes = {
-        'list': LoginViewSerializer,
+        'list': AccessPostViewSerializer,
     }
 
     def list(self, request):
@@ -139,7 +139,7 @@ class LogInView(RefinedViewSet):
                 if account.unique_auth or timezone.now() > (token.created + timedelta(days=TOKEN_LIFETIME)):
                     Token.objects.filter(user=account).update(key=token.generate_key(), created=timezone.now())
                 token = Token.objects.get(user=account)
-                access_log = AccessLog(account=account, ip=get_ip(request), token=token)
+                access_log = Access(account=account, ip=get_ip(request), token=token)
                 access_log.save()
                 return Response({'id': account.id, 'token': token.key})
             else:

@@ -5,8 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
 from .models import *
-from .utils.password import validate_password
-from .utils.serializers import validate_captcha
+from .utils.serializers import validate_captcha, validate_password, validate_id
 
 
 # Model serializers
